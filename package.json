@@ -9,8 +9,8 @@
   "author": "Soham Zemse",
   "license": "ISC",
   "dependencies": {
-    "fs-extra": "^8.1.0",
-    "ganache-cli": "^6.4.5",
-    "solc": "^0.5.10"
+    "fs-extra": "8.1.0",
+    "ganache-cli": "6.4.5",
+    "solc": "0.5.10"
   }
 }
