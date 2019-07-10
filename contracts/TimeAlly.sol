@@ -17,9 +17,19 @@ contract TimeAlly {
         uint256 stakeId;
     }
 
-    struct User {
-        Stake[] stakes;
-        Loan[] loans;
-        mapping(uint256 => bool) monthClaim;
+    // cannot have a struct inside a struct
+    // struct User {
+    //     Stake[] stakes;
+    //     Loan[] loans;
+    // }
+
+    address public owner;
+
+    mapping(address => Stake[]) stakes;
+    mapping(address => Loan[]) loans;
+    mapping(address => bool[]) monthClaim;
+
+    constructor() public {
+        owner = msg.sender;
     }
 }
