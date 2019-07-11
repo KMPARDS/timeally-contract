@@ -4,13 +4,15 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "mocha"
   },
   "author": "Soham Zemse",
   "license": "ISC",
   "dependencies": {
+    "ethers": "^4.0.33",
     "fs-extra": "8.1.0",
     "ganache-cli": "6.4.5",
+    "mocha": "^6.1.4",
     "solc": "0.5.10"
   }
 }
