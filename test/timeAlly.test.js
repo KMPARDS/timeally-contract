@@ -251,35 +251,46 @@ describe('first month in TimeAlly', async() => {
     assert.ok(benefit.eq(0));
   });
 });
-//
-// describe('second month in TimeAlly', async() => {
-//   it('time travelling to the future by 1 month using mou() time machine', async() => {
-//     const currentTime = await eraSwapInstance[0].mou();
-//     const depth = 30 * 24 * 60 * 60;
-//     await eraSwapInstance[0].goToFuture(depth);
-//     const currentTimeAfterComingOutFromTimeMachine = await eraSwapInstance[0].mou();
-//
-//     assert.ok(
-//       currentTimeAfterComingOutFromTimeMachine.sub(currentTime).gte(depth),
-//       'time travel should happen successfully'
-//     );
-//   });
-//
-//   it('invoking MonthlyNRTRelease in NRT contract and checking if TimeAlly gets 10237500 ES in second month nrt', async() => {
-//     const timeAllyBalance = await eraSwapInstance[0].balanceOf(timeAllyInstance[0].address);
-//     await nrtManagerInstance[0].MonthlyNRTRelease();
-//     const timeAllyBalanceNew = await eraSwapInstance[0].balanceOf(timeAllyInstance[0].address);
-//
-//     timeAllyMonthlyNRTsecondMonth = await timeAllyInstance[0].functions.timeAllyMonthlyNRT(2);
-//     //console.log(timeAllyMonthlyNRTfirstMonth.toString());
-//     console.log((await timeAllyInstance[1].functions.consolelog()).toString());
-//
-//     assert.ok(timeAllyBalanceNew.gt(timeAllyBalance), 'TimeAlly should get some NRT');
-//     assert.ok(timeAllyMonthlyNRTsecondMonth.eq(ethers.utils.parseEther('10237500')), 'NRT should go in the array');
-//     assert.ok((await timeAllyInstance[0].getCurrentMonth()).eq(2), 'current month should be 2 after NRT release');
-//
-//     console.log((await timeAllyInstance[1].functions.seeShareForCurrentMonth()).toString());
-//     console.log((await timeAllyInstance[2].functions.seeShareForCurrentMonth()).toString());
-//
-//   });
-// });
+
+describe('second month in TimeAlly', async() => {
+  it('time travelling to the future by 1 month using mou() time machine', async() => {
+    const currentTime = await eraSwapInstance[0].mou();
+    const depth = 30 * 24 * 60 * 60;
+    await eraSwapInstance[0].goToFuture(depth);
+    const currentTimeAfterComingOutFromTimeMachine = await eraSwapInstance[0].mou();
+
+    assert.ok(
+      currentTimeAfterComingOutFromTimeMachine.sub(currentTime).gte(depth),
+      'time travel should happen successfully'
+    );
+  });
+
+  it('invoking MonthlyNRTRelease in NRT contract and checking if TimeAlly gets 10237500 ES in second month nrt', async() => {
+    const timeAllyBalance = await eraSwapInstance[0].balanceOf(timeAllyInstance[0].address);
+    await nrtManagerInstance[0].MonthlyNRTRelease();
+    const timeAllyBalanceNew = await eraSwapInstance[0].balanceOf(timeAllyInstance[0].address);
+
+    timeAllyMonthlyNRTsecondMonth = await timeAllyInstance[0].functions.timeAllyMonthlyNRT(2);
+    //console.log(timeAllyMonthlyNRTfirstMonth.toString());
+    //console.log((await timeAllyInstance[1].functions.consolelog()).toString());
+
+    assert.ok(timeAllyBalanceNew.gt(timeAllyBalance), 'TimeAlly should get some NRT');
+    assert.ok(timeAllyMonthlyNRTsecondMonth.eq(ethers.utils.parseEther('10237500')), 'NRT should go in the array');
+    assert.ok((await timeAllyInstance[0].getCurrentMonth()).eq(2), 'current month should be 2 after NRT release');
+
+    // console.log((await timeAllyInstance[1].functions.seeShareForCurrentMonth()).toString());
+    // console.log((await timeAllyInstance[2].functions.seeShareForCurrentMonth()).toString());
+  });
+
+  it('second account tries to see his/her benefit gets 3412500 ES (to be shown in UI)', async() => {
+    const benefit = await timeAllyInstance[0].functions.seeShareForCurrentMonthByUser(accounts[1]);
+    //console.log(benefit.toString()); // 0
+    assert.ok(benefit.eq(ethers.utils.parseEther('3412500')));
+  });
+
+  it('third account tries to see his/her benefit gets 6825000 ES (to be shown in UI)', async() => {
+    const benefit = await timeAllyInstance[0].functions.seeShareForCurrentMonthByUser(accounts[2]);
+    //console.log(benefit.toString()); // 0
+    assert.ok(benefit.eq(ethers.utils.parseEther('6825000')));
+  });
+});

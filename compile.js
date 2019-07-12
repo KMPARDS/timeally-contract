@@ -53,7 +53,7 @@ if (output.errors) {
 }
 
 if(shouldBuild) {
-  console.log('\nBuilding please wait...\n');
+  console.log('\nBuilding please wait...');
 
   fs.removeSync(buildFolderPath);
   fs.ensureDirSync(buildFolderPath);
@@ -61,7 +61,7 @@ if(shouldBuild) {
   for (let contractFile in output.contracts) {
     let i = 0;
     for(let key in output.contracts[contractFile]) {
-      console.log(key, Object.keys(output.contracts[contractFile][key]));
+      //console.log(key, Object.keys(output.contracts[contractFile][key]));
       fs.outputJsonSync(
         path.resolve(buildFolderPath, `${key}_${i}.json`),
         output.contracts[contractFile][key]
@@ -69,7 +69,7 @@ if(shouldBuild) {
       i++;
     }
   }
-  console.log('\nBuild finished successfully!\n');
+  console.log('Build finished successfully!\n');
 } else {
   console.log('\nBuild failed\n');
 }
