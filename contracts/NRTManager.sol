@@ -1,6 +1,7 @@
 pragma solidity ^0.5.2;
 
 import "./Eraswap.sol";
+import "./TimeAlly.sol";
 
 
 contract NRTManager {
@@ -26,7 +27,7 @@ contract NRTManager {
     address public researchAndDevelopment;
     address public buzzCafe;
     address public timeSwappers;                 // which include powerToken , curators ,timeTraders , daySwappers
-    address public TimeAlly;                     //address of TimeAlly Contract
+    address public timeAlly;                     //address of timeAlly Contract
 
 
     uint256 public newTalentsAndPartnershipsBal; // variable to store last NRT released to the address;
@@ -36,7 +37,7 @@ contract NRTManager {
     uint256 public contingencyFundsBal;          // variable to store last NRT released to the address;
     uint256 public researchAndDevelopmentBal;    // variable to store last NRT released to the address;
     uint256 public buzzCafeNRT;                  // variable to store last NRT released to the address;
-    uint256 public TimeAllyNRT;                   // variable to store last NRT released to the address;
+    uint256 public timeAllyNRT;                   // variable to store last NRT released to the address;
     uint256 public timeSwappersNRT;              // variable to store last NRT released to the address;
 
 
@@ -76,15 +77,15 @@ contract NRTManager {
 
 
       /**
-      * @dev Throws if caller is not TimeAlly
+      * @dev Throws if caller is not timeAlly
       */
       modifier OnlyAllowed() {
-        require(msg.sender == TimeAlly || msg.sender == timeSwappers,"Only TimeAlly and Timeswapper is authorised");
+        require(msg.sender == timeAlly || msg.sender == timeSwappers,"Only TimeAlly and Timeswapper is authorised");
         _;
       }
 
           /**
-      * @dev Throws if caller is not TimeAlly
+      * @dev Throws if caller is not timeAlly
       */
       modifier OnlyOwner() {
         require(msg.sender == Owner,"Only Owner is authorised");
@@ -158,9 +159,9 @@ contract NRTManager {
           timeSwappers = pool[7];
           emit PoolAddressAdded( "TimeSwapper", timeSwappers);
         }
-        if((pool[8] != address(0)) && (TimeAlly == address(0))){
-          TimeAlly = pool[8];
-          emit PoolAddressAdded( "TimeAlly", TimeAlly);
+        if((pool[8] != address(0)) && (timeAlly == address(0))){
+          timeAlly = pool[8];
+          emit PoolAddressAdded( "TimeAlly", timeAlly);
         }
 
         return true;
@@ -205,7 +206,7 @@ contract NRTManager {
         researchAndDevelopmentBal = (NRTBal.mul(5)).div(100);
 
         buzzCafeNRT = (NRTBal.mul(25)).div(1000);
-        TimeAllyNRT = (NRTBal.mul(15)).div(100);
+        timeAllyNRT = (NRTBal.mul(15)).div(100);
         timeSwappersNRT = (NRTBal.mul(325)).div(1000);
 
         // sending tokens to respective wallets and emitting events
@@ -230,8 +231,10 @@ contract NRTManager {
         token.mint(buzzCafe,buzzCafeNRT);
         emit NRTTransfer("buzzCafe", buzzCafe, buzzCafeNRT); */
 
-        token.mint(TimeAlly,TimeAllyNRT);
-        emit NRTTransfer("stakingContract", TimeAlly, TimeAllyNRT);
+        token.mint(timeAlly,timeAllyNRT);
+        TimeAlly timeAllyContract = TimeAlly(timeAlly);
+        timeAllyContract.increaseMonth(timeAllyNRT);
+        emit NRTTransfer("stakingContract", timeAlly, timeAllyNRT);
 
         /* token.mint(timeSwappers,timeSwappersNRT);
         emit NRTTransfer("timeSwappers", timeSwappers, timeSwappersNRT); */
