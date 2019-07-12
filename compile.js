@@ -45,7 +45,7 @@ if (output.errors) {
   console.error(output.errors);
   // throw '\nError in compilation please check the contract\n';
   for(error of output.errors) {
-    if(error.severity) {
+    if(error.severity === 'error') {
       shouldBuild = false;
       break;
     }
