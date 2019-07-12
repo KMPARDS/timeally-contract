@@ -245,8 +245,10 @@ describe('first month in TimeAlly', async() => {
     assert.ok((await timeAllyInstance[0].getCurrentMonth()).eq(1), 'current month should be 1 after NRT release');
   });
 
-  it('first account tries to see his benefit', async() => {
-    const benefit = await timeAllyInstance[0].functions.seeShareForCurrentMonth()
+  it('second account tries to see his/her benefit gets 0 as benefit for staking starts from second month', async() => {
+    const benefit = await timeAllyInstance[0].functions.seeShareForCurrentMonthByUser(accounts[1]);
+    // console.log(0); // 0
+    assert.ok(benefit.eq(0));
   });
 });
 //
