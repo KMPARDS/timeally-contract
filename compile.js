@@ -47,6 +47,7 @@ if (output.errors) {
   for(error of output.errors) {
     if(error.severity === 'error') {
       shouldBuild = false;
+      throw 'Error found';
       break;
     }
   }
