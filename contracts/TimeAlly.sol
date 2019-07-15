@@ -12,6 +12,7 @@ contract TimeAlly {
         uint256 timestamp;
         uint256 stakingPlanId;
         uint256 status;
+        uint256 accruedExaEsAmount;
         uint256 loanId;
     }
 
@@ -112,6 +113,7 @@ contract TimeAlly {
             timestamp: now,
             stakingPlanId: _stakingPlanId,
             status: 1,
+            accruedExaEsAmount: 0,
             loanId: 0
         }));
 
@@ -126,12 +128,13 @@ contract TimeAlly {
     function viewStaking(
         address _userAddress,
         uint256 _stakingId
-    ) public view returns (uint256, uint256, uint256, uint256, uint256) {
+    ) public view returns (uint256, uint256, uint256, uint256, uint256, uint256) {
         return (
             stakings[_userAddress][_stakingId].exaEsAmount,
             stakings[_userAddress][_stakingId].timestamp,
             stakings[_userAddress][_stakingId].stakingPlanId,
             stakings[_userAddress][_stakingId].status,
+            stakings[_userAddress][_stakingId].accruedExaEsAmount,
             stakings[_userAddress][_stakingId].loanId
         );
     }
@@ -161,12 +164,38 @@ contract TimeAlly {
     }
 
     function withdrawShareForCurrentMonth() public {
-        uint256 share = seeShareForCurrentMonthByUser(msg.sender);
-        require(share > 0);
+        // calculate user's active stakings amount for this month
+        // divide by total active stakings to get the fraction.
+        // multiply by the total timeally NRT to get the share and send it to user
         uint256 month = getCurrentMonth();
+
+        if(totalActiveStakings[month] == 0) {
+            require(false, 'total active stakings should be non zero');
+        }
+
+        uint256 userActiveStakingsExaEsAmount;
+
+        for(uint256 i = 0; i < stakings[msg.sender].length; i++) {
+            uint256 planMonths = stakingPlans[ stakings[msg.sender][i].stakingPlanId ].months;
+
+            // user staking should be active for it to be considered
+            if(now - stakings[msg.sender][i].timestamp < planMonths * earthSecondsInMonth) {
+                userActiveStakingsExaEsAmount = userActiveStakingsExaEsAmount.add(stakings[msg.sender][i].exaEsAmount);
+            }
+        }
+
+        uint256 share = userActiveStakingsExaEsAmount.mul(timeAllyMonthlyNRT[month]).div(totalActiveStakings[month]);
+        require(share > 0);
+
         require(!monthClaim[msg.sender][month]);
         monthClaim[msg.sender][month] = true;
+
+        uint256 halfShare = share.div(2);
         token.transfer(msg.sender, share);
+    }
+
+    function withdrawExpiredStaking() public {
+
     }
 
     function consolelog() public view returns (uint256[] memory) {
