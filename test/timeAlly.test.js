@@ -25,8 +25,6 @@ const testCases = [
   [1, '10000'],
   [2, '20000'],
   [3, '47000000'],
-  [4, '78000'],
-  [5, '10000000']
 ];
 
 describe('Ganache Setup', async() => {
@@ -177,7 +175,7 @@ describe('Staking', async() => {
       const userBalanceOld = await eraSwapInstance[0].functions.balanceOf(accounts[accountId]);
       const timeAllyBalanceOld = await eraSwapInstance[0].functions.balanceOf(timeAllyInstance[0].address);
 
-      await timeAllyInstance[accountId].functions.newStaking(ethers.utils.parseEther(amount), 1);
+      await timeAllyInstance[accountId].functions.newStaking(ethers.utils.parseEther(amount), 0);
 
       const userBalanceNew = await eraSwapInstance[0].functions.balanceOf(accounts[accountId]);
       const timeAllyBalanceNew = await eraSwapInstance[0].functions.balanceOf(timeAllyInstance[0].address);
@@ -376,5 +374,29 @@ describe('second month in TimeAlly', async() => {
       assert.ok(balanceOfTimeAllyOld.sub(balanceOfTimeAllyNew).eq(element[2].div(2)), 'timeally balance should decrease by that amount');
     });
 
+  });
+});
+
+describe('next year in TimeAlly', async() => {
+  for(let i = 0; i < 12; i++) {
+    it('time travelling to the future by 1 month using mou() time machine && invoking monthly NRT', async() => {
+      const currentTime = await eraSwapInstance[0].mou();
+      const depth = 30 * 24 * 60 * 60;
+      await eraSwapInstance[0].goToFuture(depth);
+      const currentTimeAfterComingOutFromTimeMachine = await eraSwapInstance[0].mou();
+
+      assert.ok(
+        currentTimeAfterComingOutFromTimeMachine.sub(currentTime).gte(depth),
+        'time travel should happen successfully'
+      );
+
+      await nrtManagerInstance[0].MonthlyNRTRelease();
+    });
+  }
+
+  it('checking for past unclaimed benefits', async() => {
+    for(let i = 0; i < 24; i++) {
+      console.log('month '+i+':',ethers.utils.formatEther(await timeAllyInstance[0].seeShareForUserByMonth(accounts[1], i)));
+    }
   });
 });

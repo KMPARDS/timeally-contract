@@ -39,6 +39,7 @@ contract TimeAlly {
     address public nrtAddress;
     ERC20 public token;
 
+    uint256 deployedTimestamp;
     uint256 earthSecondsInMonth = 2629744;
 
     //uint256 public currentMonth;
@@ -75,6 +76,7 @@ contract TimeAlly {
         owner = msg.sender;
         token = ERC20(_tokenAddress);
         nrtAddress = _nrtAddress;
+        deployedTimestamp = now;
         timeAllyMonthlyNRT.push(0);
     }
 
@@ -163,6 +165,31 @@ contract TimeAlly {
         return userActiveStakingsExaEsAmount.mul(timeAllyMonthlyNRT[month]).div(totalActiveStakings[month]);
     }
 
+
+    function seeShareForUserByMonth(address _userAddress, uint256 _month) public view returns (uint256) {
+        // calculate user's active stakings amount for this month
+        // divide by total active stakings to get the fraction.
+        // multiply by the total timeally NRT to get the share and send it to user
+
+        if(totalActiveStakings[_month] == 0) {
+            return 0;
+        }
+
+        uint256 userActiveStakingsExaEsAmount;
+
+        for(uint256 i = 0; i < stakings[_userAddress].length; i++) {
+            uint256 planMonths = stakingPlans[ stakings[_userAddress][i].stakingPlanId ].months;
+
+            // user staking should be active for it to be considered
+            if(deployedTimestamp * _month - stakings[_userAddress][i].timestamp < planMonths * earthSecondsInMonth) {
+                userActiveStakingsExaEsAmount = userActiveStakingsExaEsAmount.add(stakings[_userAddress][i].exaEsAmount);
+            }
+        }
+
+        return userActiveStakingsExaEsAmount.mul(timeAllyMonthlyNRT[_month]).div(totalActiveStakings[_month]);
+    }
+
+
     function withdrawShareForCurrentMonth() public {
 
         uint256 month = getCurrentMonth();
@@ -181,7 +208,8 @@ contract TimeAlly {
             uint256 planMonths = stakingPlans[ stakings[msg.sender][i].stakingPlanId ].months;
 
             // user staking should be active for it to be considered
-            if(now - stakings[msg.sender][i].timestamp < planMonths * earthSecondsInMonth) {
+            if(now - stakings[msg.sender][i].timestamp < planMonths * earthSecondsInMonth
+                && stakings[msg.sender][i].status == 1) {
                 // for every staking, incrementing its accrued amount
                 uint256 accruedShare = stakings[msg.sender][i].exaEsAmount.mul(accruedPercentage).div(100);
                 stakings[msg.sender][i].accruedExaEsAmount = stakings[msg.sender][i].accruedExaEsAmount.add(accruedShare);
@@ -200,9 +228,19 @@ contract TimeAlly {
         }
     }
 
-    // function withdrawExpiredStaking() public {
-    //
-    // }
+    // give in input which which stakings to withdeaw
+    function withdrawExpiredStakings(uint256[] memory _stakings) public {
+        for(uint256 i = 0; i < _stakings.length; i++) {
+            stakings[msg.sender][_stakings[i]].status = 3;
+
+            newStaking(
+              stakings[msg.sender][_stakings[i]].accruedExaEsAmount,
+              stakings[msg.sender][_stakings[i]].stakingPlanId
+            );
+
+            token.transfer(msg.sender, stakings[msg.sender][_stakings[i]].exaEsAmount);
+        }
+    }
 
     function consolelog() public view returns (uint256[] memory) {
         return timeAllyMonthlyNRT;
