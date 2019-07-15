@@ -50,7 +50,7 @@ contract TimeAlly {
     // user activity details:
     mapping(address => Staking[]) stakings;
     mapping(address => Loan[]) loans;
-    mapping(address => bool[]) monthClaim;
+    mapping(address => mapping (uint256 => bool)) monthClaim;
 
     mapping (uint256 => uint256) public totalActiveStakings;
 
@@ -150,6 +150,8 @@ contract TimeAlly {
 
         for(uint256 i = 0; i < stakings[_userAddress].length; i++) {
             uint256 planMonths = stakingPlans[ stakings[_userAddress][i].stakingPlanId ].months;
+
+            // user staking should be active for it to be considered
             if(now - stakings[_userAddress][i].timestamp < planMonths * earthSecondsInMonth) {
                 userActiveStakingsExaEsAmount = userActiveStakingsExaEsAmount.add(stakings[_userAddress][i].exaEsAmount);
             }

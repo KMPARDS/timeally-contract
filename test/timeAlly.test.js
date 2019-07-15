@@ -288,9 +288,23 @@ describe('second month in TimeAlly', async() => {
     assert.ok(benefit.eq(ethers.utils.parseEther('3412500')));
   });
 
+  it('second accounts withdraws his/her benefit and gets 3412500 ES transfered to him/her', async() => {
+    const balanceOfSecondOld = await eraSwapInstance[0].functions.balanceOf(accounts[1]);
+    const balanceOfTimeAllyOld = await eraSwapInstance[0].functions.balanceOf(timeAllyInstance[0].address);
+
+    await timeAllyInstance[1].functions.withdrawShareForCurrentMonth();
+
+    const balanceOfSecondNew = await eraSwapInstance[0].functions.balanceOf(accounts[1]);
+    const balanceOfTimeAllyNew = await eraSwapInstance[0].functions.balanceOf(timeAllyInstance[0].address);
+
+    assert.ok(balanceOfSecondNew.sub(balanceOfSecondOld).eq(ethers.utils.parseEther('3412500')), 'second account liquid balance should increase by 3412500 ES');
+    assert.ok(balanceOfTimeAllyOld.sub(balanceOfTimeAllyNew).eq(ethers.utils.parseEther('3412500')), 'timeally balance should decrease by 3412500 ES');
+  });
+
   it('third account tries to see his/her benefit gets 6825000 ES (to be shown in UI)', async() => {
     const benefit = await timeAllyInstance[0].functions.seeShareForCurrentMonthByUser(accounts[2]);
     //console.log(benefit.toString()); // 0
     assert.ok(benefit.eq(ethers.utils.parseEther('6825000')));
   });
+
 });
