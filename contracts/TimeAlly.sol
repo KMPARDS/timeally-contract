@@ -78,6 +78,7 @@ contract TimeAlly {
         nrtAddress = _nrtAddress;
         deployedTimestamp = token.mou();
         timeAllyMonthlyNRT.push(0);
+        timeAllyMonthlyNRT.push(0);
     }
 
     function increaseMonth(uint256 _timeAllyNRT) public onlyNRTManager() {
@@ -85,7 +86,7 @@ contract TimeAlly {
     }
 
     function getCurrentMonth() public view returns (uint256) {
-        return timeAllyMonthlyNRT.length - 1;
+        return timeAllyMonthlyNRT.length - 2;
     }
 
     function createStakingPlan(uint256 _months, uint256 _fractionFrom15) public onlyOwner() {
@@ -178,11 +179,11 @@ contract TimeAlly {
         uint256 userActiveStakingsExaEsAmount;
 
         for(uint256 i = 0; i < stakings[_userAddress].length; i++) {
-            uint256 planMonths = stakingPlans[ stakings[_userAddress][i].stakingPlanId ].months;
+            StakingPlan memory plan = stakingPlans[ stakings[_userAddress][i].stakingPlanId ];
 
             // user staking should be active for it to be considered
-            if(deployedTimestamp * _month - stakings[_userAddress][i].timestamp < planMonths * earthSecondsInMonth) {
-                userActiveStakingsExaEsAmount = userActiveStakingsExaEsAmount.add(stakings[_userAddress][i].exaEsAmount);
+            if(deployedTimestamp + _month * earthSecondsInMonth - stakings[_userAddress][i].timestamp <= plan.months * earthSecondsInMonth) {
+                userActiveStakingsExaEsAmount = userActiveStakingsExaEsAmount.add(stakings[_userAddress][i].exaEsAmount.mul(plan.fractionFrom15).div(15));
             }
         }
 

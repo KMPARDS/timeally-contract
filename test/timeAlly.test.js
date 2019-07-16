@@ -22,7 +22,7 @@ let accounts
 // ];
 
 const testCases = [
-  [1, '10000', 1],
+  [1, '10000', 0],
   [2, '20000', 0],
   [3, '470000000', 0],
   [4, '12000', 0]
@@ -381,26 +381,33 @@ describe('first month in TimeAlly', async() => {
   });
 });
 
-// describe('next year in TimeAlly', async() => {
-//   for(let i = 0; i < 12; i++) {
-//     it('time travelling to the future by 1 month using mou() time machine && invoking monthly NRT', async() => {
-//       const currentTime = await eraSwapInstance[0].mou();
-//       const depth = 30 * 24 * 60 * 60;
-//       await eraSwapInstance[0].goToFuture(depth);
-//       const currentTimeAfterComingOutFromTimeMachine = await eraSwapInstance[0].mou();
-//
-//       assert.ok(
-//         currentTimeAfterComingOutFromTimeMachine.sub(currentTime).gte(depth),
-//         'time travel should happen successfully'
-//       );
-//
-//       await nrtManagerInstance[0].MonthlyNRTRelease();
-//     });
-//   }
-//
-//   it('checking for past unclaimed benefits', async() => {
-//     for(let i = 0; i < 24; i++) {
-//       console.log('month '+i+':',ethers.utils.formatEther(await timeAllyInstance[0].seeShareForUserByMonth(accounts[1], i)));
-//     }
-//   });
-// });
+describe('next year in TimeAlly', async() => {
+  for(let i = 0; i < 12; i++) {
+    it('time travelling to the future by 1 month using mou() time machine && invoking monthly NRT', async() => {
+      const currentTime = await eraSwapInstance[0].mou();
+      const depth = 30 * 24 * 60 * 60;
+      await eraSwapInstance[0].goToFuture(depth);
+      const currentTimeAfterComingOutFromTimeMachine = await eraSwapInstance[0].mou();
+
+      assert.ok(
+        currentTimeAfterComingOutFromTimeMachine.sub(currentTime).gte(depth),
+        'time travel should happen successfully'
+      );
+
+      await nrtManagerInstance[0].MonthlyNRTRelease();
+    });
+  }
+
+  it('checking for past unclaimed benefits', async() => {
+    for(let i = 0; i < 25; i++) {
+      console.log('month '+i+':',ethers.utils.formatEther(await timeAllyInstance[0].seeShareForUserByMonth(accounts[1], i)));
+    }
+
+    (await timeAllyInstance[0].consolelog()).forEach((el, index) => console.log('month '+index, el.toString()))
+
+    console.log('\n total active stakings:');
+    for(let i = 0; i < 20; i++) {
+      console.log('month '+i+':', await timeAllyInstance[0].totalActiveStakings(i));
+    }
+  });
+});
