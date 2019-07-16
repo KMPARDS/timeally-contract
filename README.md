@@ -2,6 +2,11 @@
 
 TimeAlly is a meticulously crafted smart contract to reduce the volatility of Era Swap Token. It rewards users who choose to lock their tokens in the smart contract according to their vesting periods. TimeAlly is a very crucial part of the ecosystem as it controls some of the demand-supply dynamics of the token. TimeAlly acts as an elementary reward distribution method for users of multiple platforms of Era Swap Ecosystem.
 
+## Steps to Test
+- `npm i`
+- `node compile.js`
+- `npm test`
+
 ## Actors Involved
 
 - TimeAlly Contract (allocates the funds received from NRT to users)
