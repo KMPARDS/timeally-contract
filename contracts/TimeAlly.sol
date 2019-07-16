@@ -37,7 +37,7 @@ contract TimeAlly {
 
     address public owner;
     address public nrtAddress;
-    ERC20 public token;
+    Eraswap public token;
 
     uint256 deployedTimestamp;
     uint256 earthSecondsInMonth = 2629744;
@@ -74,9 +74,9 @@ contract TimeAlly {
 
     constructor(address _tokenAddress, address _nrtAddress) public {
         owner = msg.sender;
-        token = ERC20(_tokenAddress);
+        token = Eraswap(_tokenAddress);
         nrtAddress = _nrtAddress;
-        deployedTimestamp = now;
+        deployedTimestamp = token.mou();
         timeAllyMonthlyNRT.push(0);
     }
 
@@ -112,7 +112,7 @@ contract TimeAlly {
         Staking[] storage userStakingsArray = stakings[msg.sender];
         userStakingsArray.push(Staking({
             exaEsAmount: _exaEsAmount,
-            timestamp: now,
+            timestamp: token.mou(),
             stakingPlanId: _stakingPlanId,
             status: 1,
             accruedExaEsAmount: 0,
@@ -154,11 +154,11 @@ contract TimeAlly {
         uint256 userActiveStakingsExaEsAmount;
 
         for(uint256 i = 0; i < stakings[_userAddress].length; i++) {
-            uint256 planMonths = stakingPlans[ stakings[_userAddress][i].stakingPlanId ].months;
+            StakingPlan memory plan = stakingPlans[ stakings[_userAddress][i].stakingPlanId ];
 
             // user staking should be active for it to be considered
-            if(now - stakings[_userAddress][i].timestamp < planMonths * earthSecondsInMonth) {
-                userActiveStakingsExaEsAmount = userActiveStakingsExaEsAmount.add(stakings[_userAddress][i].exaEsAmount);
+            if(token.mou() - stakings[_userAddress][i].timestamp < plan.months * earthSecondsInMonth) {
+                userActiveStakingsExaEsAmount = userActiveStakingsExaEsAmount.add(stakings[_userAddress][i].exaEsAmount.mul(plan.fractionFrom15).div(15));
             }
         }
 
@@ -205,16 +205,17 @@ contract TimeAlly {
         uint256 accruedPercentage = 50;
 
         for(uint256 i = 0; i < stakings[msg.sender].length; i++) {
-            uint256 planMonths = stakingPlans[ stakings[msg.sender][i].stakingPlanId ].months;
+            StakingPlan memory plan = stakingPlans[ stakings[msg.sender][i].stakingPlanId ];
 
             // user staking should be active for it to be considered
-            if(now - stakings[msg.sender][i].timestamp < planMonths * earthSecondsInMonth
+            if(token.mou() - stakings[msg.sender][i].timestamp < plan.months * earthSecondsInMonth
                 && stakings[msg.sender][i].status == 1) {
                 // for every staking, incrementing its accrued amount
-                uint256 accruedShare = stakings[msg.sender][i].exaEsAmount.mul(accruedPercentage).div(100);
+                uint256 effectiveAmount = stakings[msg.sender][i].exaEsAmount.mul(plan.fractionFrom15).div(15);
+                uint256 accruedShare = effectiveAmount.mul(accruedPercentage).div(100);
                 stakings[msg.sender][i].accruedExaEsAmount = stakings[msg.sender][i].accruedExaEsAmount.add(accruedShare);
 
-                userActiveStakingsExaEsAmount = userActiveStakingsExaEsAmount.add(stakings[msg.sender][i].exaEsAmount);
+                userActiveStakingsExaEsAmount = userActiveStakingsExaEsAmount.add(effectiveAmount);
             }
         }
 
