@@ -22,10 +22,10 @@ let accounts
 // ];
 
 const testCases = [
-  [1, '10000'],
-  [2, '20000'],
-  [3, '470000000'],
-  [4, '12000']
+  [1, '10000', 1],
+  [2, '20000', 0],
+  [3, '470000000', 0],
+  [4, '12000', 0]
 ];
 
 describe('Ganache Setup', async() => {
@@ -162,6 +162,7 @@ describe('Staking', async() => {
   testCases.forEach(element => {
     const accountId = element[0];
     const amount = element[1];
+    const planId = element[2];
     it(`account ${accountId} gives allowance of ${amount} ES to timeAlly`, async() => {
       eraSwapInstance[accountId] = new ethers.Contract(eraSwapInstance[0].address, eraSwapTokenJSON.abi, provider.getSigner(accounts[accountId]));
       await eraSwapInstance[accountId].functions.approve(timeAllyInstance[0].address, ethers.utils.parseEther(amount));
@@ -170,13 +171,13 @@ describe('Staking', async() => {
       assert.ok( allowance.eq(ethers.utils.parseEther(amount)) );
     });
 
-    it(`account ${accountId} stakes ${amount} ES using timeAlly`, async() => {
+    it(`account ${accountId} stakes ${amount} ES using timeAlly ${planId === 0 ? '1 year' : '2 year'}`, async() => {
       timeAllyInstance[accountId] = new ethers.Contract(timeAllyInstance[0].address, timeAllyJSON.abi, provider.getSigner(accounts[accountId]));
 
       const userBalanceOld = await eraSwapInstance[0].functions.balanceOf(accounts[accountId]);
       const timeAllyBalanceOld = await eraSwapInstance[0].functions.balanceOf(timeAllyInstance[0].address);
 
-      await timeAllyInstance[accountId].functions.newStaking(ethers.utils.parseEther(amount), 0);
+      await timeAllyInstance[accountId].functions.newStaking(ethers.utils.parseEther(amount), planId);
 
       const userBalanceNew = await eraSwapInstance[0].functions.balanceOf(accounts[accountId]);
       const timeAllyBalanceNew = await eraSwapInstance[0].functions.balanceOf(timeAllyInstance[0].address);
@@ -359,7 +360,7 @@ describe('first month in TimeAlly', async() => {
     });
 
     testCases.forEach(element => {
-      const [accountId, amount, benefit] = element; // benefit is coming undefined, thats why using element[2]
+      const [accountId, amount] = element;
 
       it(`account ${accountId} withdraws his/her benefit and gets 50% of benefit transfered to him/her and 50% accrued`, async() => {
         const balanceOld = await eraSwapInstance[0].functions.balanceOf(accounts[accountId]);
@@ -372,8 +373,8 @@ describe('first month in TimeAlly', async() => {
 
         console.log("\x1b[2m",`\n\t -> account bal of ${accountId} is ${ethers.utils.formatEther(balanceNew)} ES`);
 
-        assert.ok(balanceNew.sub(balanceOld).eq(element[2].div(2)), 'liquid balance should be half of benefit');
-        assert.ok(balanceOfTimeAllyOld.sub(balanceOfTimeAllyNew).eq(element[2].div(2)), 'timeally balance should decrease by that amount');
+        assert.ok(balanceNew.sub(balanceOld).eq(element[3].div(2)), 'liquid balance should be half of benefit');
+        assert.ok(balanceOfTimeAllyOld.sub(balanceOfTimeAllyNew).eq(element[3].div(2)), 'timeally balance should decrease by that amount');
       });
 
     });
