@@ -56,10 +56,12 @@ contract TimeAlly {
 
     mapping (uint256 => uint256) public totalActiveStakings;
 
+    // need stakingid in this
     event NewStaking(
         address indexed _staker,
         uint256 indexed _stakePlanId,
-        uint256 _exaEsAmount
+        uint256 _exaEsAmount,
+        uint256 _stakingIndex
     );
 
     modifier onlyNRTManager() {
@@ -120,7 +122,7 @@ contract TimeAlly {
             loanId: 0
         }));
 
-        emit NewStaking(msg.sender, _stakingPlanId, _exaEsAmount);
+        emit NewStaking(msg.sender, _stakingPlanId, _exaEsAmount, userStakingsArray.length - 1);
     }
 
     function getNumberOfStakingsByUser(address _userAddress) public view returns (uint256) {
@@ -182,7 +184,9 @@ contract TimeAlly {
             StakingPlan memory plan = stakingPlans[ stakings[_userAddress][i].stakingPlanId ];
 
             // user staking should be active for it to be considered
-            if(deployedTimestamp + _month * earthSecondsInMonth - stakings[_userAddress][i].timestamp <= plan.months * earthSecondsInMonth) {
+            uint256 stakingMonth = stakings[_userAddress][i].timestamp.sub(deployedTimestamp).div(earthSecondsInMonth);
+
+            if(stakingMonth + 2 <= _month && stakingMonth + 13 >= _month) {
                 userActiveStakingsExaEsAmount = userActiveStakingsExaEsAmount.add(stakings[_userAddress][i].exaEsAmount.mul(plan.fractionFrom15).div(15));
             }
         }
