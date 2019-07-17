@@ -23,9 +23,10 @@ let accounts
 
 const testCases = [
   [1, '10000', 1],
-  // [2, '20000', 0],
-  // [3, '470000000', 0],
-  // [4, '12000', 0]
+  [2, '20000', 0],
+  [3, '470000000', 0],
+  [4, '12000', 0],
+  //[4, '12000', 0] // the last one is staked after 10 days
 ];
 
 describe('Ganache Setup', async() => {
@@ -144,10 +145,12 @@ describe('TimeAlly Setup', async() => {
 
 describe('Staking', async() => {
   let heading1 = '', heading2 = '';
+
   testCases.forEach(element => {
     heading1 += heading1 ? ', '+element[1]+' ES' : element[1]+' ES';
     heading2 += heading2 ? ', '+element[0] : element[0];
   });
+
   it(`account 0 sends ${heading1} to ${heading2} account`, async() => {
     testCases.forEach(async element => {
       const accountId = element[0];
@@ -159,15 +162,24 @@ describe('Staking', async() => {
     });
   });
 
-  testCases.forEach(element => {
+
+
+  testCases.forEach( (element, index) => {
     const accountId = element[0];
     const amount = element[1];
     const planId = element[2];
+
+    if(index === testCases.length - 1) {
+      it('goes 10 days in future', async() => {
+        const depth = 10 * 24 * 60 * 60;
+        await eraSwapInstance[0].goToFuture(depth);
+      });
+    }
+
     it(`account ${accountId} gives allowance of ${amount} ES to timeAlly`, async() => {
       eraSwapInstance[accountId] = new ethers.Contract(eraSwapInstance[0].address, eraSwapTokenJSON.abi, provider.getSigner(accounts[accountId]));
       await eraSwapInstance[accountId].functions.approve(timeAllyInstance[0].address, ethers.utils.parseEther(amount));
       const allowance = await eraSwapInstance[0].functions.allowance(accounts[accountId], timeAllyInstance[0].address);
-
       assert.ok( allowance.eq(ethers.utils.parseEther(amount)) );
     });
 
@@ -191,102 +203,23 @@ describe('Staking', async() => {
         timeAllyBalanceNew.sub(timeAllyBalanceOld).eq(ethers.utils.parseEther(amount)),
         amount+' should increase in timeally'
       );
-    });
 
-    // it(`account ${accountId} can easily see his staking details (will be shown on UI)`, async() => {
-    //   const staking = await timeAllyInstance[0].functions.viewStaking(accounts[accountId], 0);
-    //   //console.log(staking);
-    //   assert.ok(staking[0].eq(ethers.utils.parseEther(amount)));
-    //   assert.ok(staking[2].eq(1));
-    //   assert.ok(staking[3].eq(1));
-    // });
-  });
+    }); // it closing
 
+    if(index === testCases.length - 1) {
+      it('goes 10 days back in time', async() => {
+        const depth = 10 * 24 * 60 * 60;
+        await eraSwapInstance[0].goToPast(depth);
+      });
+    }
 
-  // it('account 1 gives allowance of 10,000 ES to timeAlly', async() => {
-  //   eraSwapInstance[1] = new ethers.Contract(eraSwapInstance[0].address, eraSwapTokenJSON.abi, provider.getSigner(accounts[1]));
-  //   await eraSwapInstance[1].functions.approve(timeAllyInstance[0].address, ethers.utils.parseEther('10000'));
-  //   const allowance = await eraSwapInstance[0].functions.allowance(accounts[1], timeAllyInstance[0].address);
-  //
-  //   assert.ok(allowance.eq(ethers.utils.parseEther('10000')), 'Allowance from second user must be 10,000 ES');
-  // });
-  //
-  // it('second account stakes 10,000 ES using timeAlly', async() => {
-  //   timeAllyInstance[1] = new ethers.Contract(timeAllyInstance[0].address, timeAllyJSON.abi, provider.getSigner(accounts[1]));
-  //
-  //   const userBalanceOld = await eraSwapInstance[0].functions.balanceOf(accounts[1]);
-  //   const timeAllyBalanceOld = await eraSwapInstance[0].functions.balanceOf(timeAllyInstance[0].address);
-  //
-  //   await timeAllyInstance[1].functions.newStaking(ethers.utils.parseEther('10000'), 1);
-  //
-  //   const userBalanceNew = await eraSwapInstance[0].functions.balanceOf(accounts[1]);
-  //   const timeAllyBalanceNew = await eraSwapInstance[0].functions.balanceOf(timeAllyInstance[0].address);
-  //
-  //   assert.ok(
-  //     userBalanceOld.sub(userBalanceNew).eq(ethers.utils.parseEther('10000')),
-  //     '10,000 should decrease from user'
-  //   );
-  //
-  //   assert.ok(
-  //     timeAllyBalanceNew.sub(timeAllyBalanceOld).eq(ethers.utils.parseEther('10000')),
-  //     '20,000 should increase in timeally'
-  //   );
-  // });
-  //
-  // it('second account can easily see his staking details (will be shown on UI)', async() => {
-  //   const staking = await timeAllyInstance[0].functions.viewStaking(accounts[1], 0);
-  //   //console.log(staking);
-  //   assert.ok(staking[0].eq(ethers.utils.parseEther('10000')));
-  //   assert.ok(staking[2].eq(1));
-  //   assert.ok(staking[3].eq(1));
-  // });
-  //
-  // it('third account gives allowance of 20,000 ES to timeAlly', async() => {
-  //   eraSwapInstance[2] = new ethers.Contract(eraSwapInstance[0].address, eraSwapTokenJSON.abi, provider.getSigner(accounts[2]));
-  //   await eraSwapInstance[2].functions.approve(timeAllyInstance[0].address, ethers.utils.parseEther('20000'));
-  //   const allowance = await eraSwapInstance[0].functions.allowance(accounts[2], timeAllyInstance[0].address);
-  //
-  //   assert.ok(allowance.eq(ethers.utils.parseEther('20000')), 'Allowance from third user must be 20,000 ES');
-  // });
-  //
-  // it('third account stakes 20,000 ES using timeAlly', async() => {
-  //   timeAllyInstance[2] = new ethers.Contract(timeAllyInstance[0].address, timeAllyJSON.abi, provider.getSigner(accounts[2]));
-  //
-  //   const userBalanceOld = await eraSwapInstance[0].functions.balanceOf(accounts[2]);
-  //   const timeAllyBalanceOld = await eraSwapInstance[0].functions.balanceOf(timeAllyInstance[0].address);
-  //
-  //   await timeAllyInstance[2].functions.newStaking(ethers.utils.parseEther('20000'), 0);
-  //
-  //   const userBalanceNew = await eraSwapInstance[0].functions.balanceOf(accounts[2]);
-  //   const timeAllyBalanceNew = await eraSwapInstance[0].functions.balanceOf(timeAllyInstance[0].address);
-  //
-  //   // console.log('third account old:', userBalanceOld.toString(), 'timeally old:', timeAllyBalanceOld.toString());
-  //   // console.log('third account new:', userBalanceNew.toString(), 'timeally new:', timeAllyBalanceNew.toString());
-  //
-  //   assert.ok(
-  //     userBalanceOld.sub(userBalanceNew).eq(ethers.utils.parseEther('20000')),
-  //     '20,000 ES should decrease from user side'
-  //   );
-  //
-  //   assert.ok(
-  //     timeAllyBalanceNew.sub(timeAllyBalanceOld).eq(ethers.utils.parseEther('20000')),
-  //     '20,000 ES should increase in timeally'
-  //   );
-  // });
-  //
-  // it('third account can easily see his staking details (will be shown on UI)', async() => {
-  //   const staking = await timeAllyInstance[0].functions.viewStaking(accounts[2], 0);
-  //
-  //   assert.ok(staking[0].eq(ethers.utils.parseEther('20000')));
-  //   assert.ok(staking[2].eq(0));
-  //   assert.ok(staking[3].eq(1));
-  // });
-});
+  }); // test cases closing
+}); // describe closing
 
 describe('first month in TimeAlly', async() => {
-  it('time travelling to the future by 1 month using mou() time machine', async() => {
+  it('time travelling to the future by 1 month and half day using mou() time machine', async() => {
     const currentTime = await eraSwapInstance[0].mou();
-    const depth = 30 * 24 * 60 * 60;
+    const depth = 30.5 * 24 * 60 * 60;
     await eraSwapInstance[0].goToFuture(depth);
     const currentTimeAfterComingOutFromTimeMachine = await eraSwapInstance[0].mou();
 
@@ -309,19 +242,45 @@ describe('first month in TimeAlly', async() => {
     assert.ok((await timeAllyInstance[0].getCurrentMonth()).eq(1), 'current month should be 1 after NRT release');
   });
 
-  it('account 1 tries to see his/her benefit gets 0 as benefit because benefit starts from second month of staking', async() => {
+  it('account 1 tries to see his/her benefit gets something as benefit', async() => {
     const currentMonth = await timeAllyInstance[0].getCurrentMonth();
     const benefit = await timeAllyInstance[0].functions.seeShareForUserByMonth(accounts[1], currentMonth);
     // console.log(0); // 0
-    assert.ok(benefit.eq(0));
+    assert.ok(benefit.gt(0));
   });
+
+  (accountId => {
+    // it('goes 10 day past in time', async() => {
+    //   const depth = 8 * 24 * 60 * 60;
+    //   await eraSwapInstance[0].goToPast(depth);
+    // });
+
+    it(`account ${accountId} tries to see his/her benefit but gets 0 as he/she staked 10 days later`, async() => {
+      const currentMonth = await timeAllyInstance[0].getCurrentMonth();
+      const benefit = await timeAllyInstance[0].functions.seeShareForUserByMonth(accounts[accountId], currentMonth);
+      benefit ? console.log(`account ${accountId} benefit ${ethers.utils.formatEther(benefit)} ES`) : null;
+      assert.ok(benefit.eq(0));
+    });
+
+    it('goes 10 days future in time', async() => {
+      const depth = 10 * 24 * 60 * 60;
+      await eraSwapInstance[0].goToFuture(depth);
+    });
+
+    it(`account ${accountId} tries to see his/her benefit, now should see something`, async() => {
+      const currentMonth = await timeAllyInstance[0].getCurrentMonth();
+      const benefit = await timeAllyInstance[0].functions.seeShareForUserByMonth(accounts[accountId], currentMonth);
+      assert.ok(benefit.gt(0));
+    });
+
+  })(testCases[testCases.length - 1][0]);
 });
 
 ['second', 'third'].forEach((month, index) => {
   describe(`${month} month in TimeAlly`, async() => {
-    it('time travelling to the future by 1 month using mou() time machine', async() => {
+    it('time travelling to the future by 1 month and half day using mou() time machine', async() => {
       const currentTime = await eraSwapInstance[0].mou();
-      const depth = 30 * 24 * 60 * 60;
+      const depth = 30.5 * 24 * 60 * 60;
       await eraSwapInstance[0].goToFuture(depth);
       const currentTimeAfterComingOutFromTimeMachine = await eraSwapInstance[0].mou();
 
@@ -384,6 +343,24 @@ describe('first month in TimeAlly', async() => {
   });
 });
 
+describe('Withdrawing past benefit', async() => {
+  it('account 1 can get its first share of his/her staking after withdrawing 2nd and 3rd', async() => {
+    const balanceOld = await eraSwapInstance[0].functions.balanceOf(accounts[1]);
+    const balanceOfTimeAllyOld = await eraSwapInstance[0].functions.balanceOf(timeAllyInstance[0].address);
+
+    const month = 1;
+    await timeAllyInstance[1].functions.withdrawShareForUserByMonth(month, 50);
+
+    const balanceNew = await eraSwapInstance[0].functions.balanceOf(accounts[1]);
+    const balanceOfTimeAllyNew = await eraSwapInstance[0].functions.balanceOf(timeAllyInstance[0].address);
+
+    console.log("\x1b[2m",`\n\t -> account bal of 1 is ${ethers.utils.formatEther(balanceNew)} ES`);
+
+    assert.ok(balanceNew.sub(balanceOld).eq(testCases[0][3].div(2)), 'liquid balance should be half of benefit');
+    assert.ok(balanceOfTimeAllyOld.sub(balanceOfTimeAllyNew).eq(testCases[0][3].div(2)), 'timeally balance should decrease by that amount');
+  });
+});
+
 describe('next year in TimeAlly', async() => {
   for(let i = 0; i < 12; i++) {
     it('time travelling to the future by 1 month using mou() time machine && invoking monthly NRT', async() => {
@@ -401,16 +378,21 @@ describe('next year in TimeAlly', async() => {
     });
   }
 
+  it('goes 17 days in future', async() => {
+    const depth = 17 * 24 * 60 * 60;
+    await eraSwapInstance[0].goToFuture(depth);
+  });
+
   it('user 1 sees for past unclaimed benefits', async() => {
     const currentMonth = (await timeAllyInstance[0].getCurrentMonth()).toNumber();
     console.log(`\nMonth: ${currentMonth} is there`);
 
     console.log('\nMonthly NRT array');
-    (await timeAllyInstance[0].consolelog()).forEach(
+    (await timeAllyInstance[0].timeAllyMonthlyNRTArray()).forEach(
       (el, index) => console.log('month '+index+ ': ' + ethers.utils.formatEther(el))
     );
 
-    console.log('\nuserActiveStakingByMonth');
+    console.log('\nuserActiveStakingByMonth of account 1');
     for(let i = 0; i <= currentMonth; i++) {
       console.log('month '+i+':',ethers.utils.formatEther(await timeAllyInstance[0].userActiveStakingByMonth(accounts[1], i)));
     }
@@ -420,7 +402,7 @@ describe('next year in TimeAlly', async() => {
       console.log('month '+i+':', ethers.utils.formatEther(await timeAllyInstance[0].totalActiveStakings(i)));
     }
 
-    console.log('\nseeShareForUserByMonth')
+    console.log('\nseeShareForUserByMonth of account 1')
     for(let i = 0; i <= currentMonth; i++) {
       console.log('month '+i+':',ethers.utils.formatEther(await timeAllyInstance[0].seeShareForUserByMonth(accounts[1], i)));
     }
