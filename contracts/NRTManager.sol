@@ -25,7 +25,7 @@ contract NRTManager {
     address public kmPards;
     address public contingencyFunds;
     address public researchAndDevelopment;
-    address public buzzCafe;
+    address public powerToken;
     address public timeSwappers;                 // which include powerToken , curators ,timeTraders , daySwappers
     address public timeAlly;                     //address of timeAlly Contract
 
@@ -36,7 +36,7 @@ contract NRTManager {
     uint256 public kmPardsBal;                   // variable to store last NRT released to the address;
     uint256 public contingencyFundsBal;          // variable to store last NRT released to the address;
     uint256 public researchAndDevelopmentBal;    // variable to store last NRT released to the address;
-    uint256 public buzzCafeNRT;                  // variable to store last NRT released to the address;
+    uint256 public powerTokenNRT;                  // variable to store last NRT released to the address;
     uint256 public timeAllyNRT;                   // variable to store last NRT released to the address;
     uint256 public timeSwappersNRT;              // variable to store last NRT released to the address;
 
@@ -151,9 +151,9 @@ contract NRTManager {
           researchAndDevelopment = pool[5];
           emit PoolAddressAdded( "ResearchAndDevelopment", researchAndDevelopment);
         }
-        if((pool[6] != address(0)) && (buzzCafe == address(0))){
-          buzzCafe = pool[6];
-          emit PoolAddressAdded( "BuzzCafe", buzzCafe);
+        if((pool[6] != address(0)) && (powerToken == address(0))){
+          powerToken = pool[6];
+          emit PoolAddressAdded( "PowerToken", powerToken);
         }
         if((pool[7] != address(0)) && (timeSwappers == address(0))){
           timeSwappers = pool[7];
@@ -205,9 +205,9 @@ contract NRTManager {
         contingencyFundsBal = (NRTBal.mul(10)).div(100);
         researchAndDevelopmentBal = (NRTBal.mul(5)).div(100);
 
-        buzzCafeNRT = (NRTBal.mul(25)).div(1000);
+        powerTokenNRT = (NRTBal.mul(10)).div(100);
         timeAllyNRT = (NRTBal.mul(15)).div(100);
-        timeSwappersNRT = (NRTBal.mul(325)).div(1000);
+        timeSwappersNRT = (NRTBal.mul(25)).div(100);
 
         // sending tokens to respective wallets and emitting events
         /* token.mint(newTalentsAndPartnerships,newTalentsAndPartnershipsBal);
@@ -228,8 +228,8 @@ contract NRTManager {
         token.mint(researchAndDevelopment,researchAndDevelopmentBal);
         emit NRTTransfer("researchAndDevelopment", researchAndDevelopment, researchAndDevelopmentBal);
 
-        token.mint(buzzCafe,buzzCafeNRT);
-        emit NRTTransfer("buzzCafe", buzzCafe, buzzCafeNRT); */
+        token.mint(powerToken,powerTokenNRT);
+        emit NRTTransfer("powerToken", powerToken, powerTokenNRT); */
 
         token.mint(timeAlly,timeAllyNRT);
         TimeAlly timeAllyContract = TimeAlly(timeAlly);
