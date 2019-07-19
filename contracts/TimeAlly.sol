@@ -7,7 +7,7 @@ import './NRTManager.sol';
 /*
 
 Potential bugs: this contract is designed assuming NRT Release will happen every month.
-There might be issues when the NRT scheduled 
+There might be issues when the NRT scheduled
 
 */
 
@@ -19,10 +19,13 @@ contract TimeAlly {
         uint256 exaEsAmount;
         uint256 timestamp;
         uint256 stakingPlanId;
-        uint256 status;
+        uint256 status; // 1 => active; 2 => loaned; 3 => withdrawed; 4 => cancelled
         uint256 accruedExaEsAmount;
         uint256 loanId;
         mapping (uint256 => bool) isMonthClaimed;
+        uint256 refundMonthClaimedLast;
+        uint256 refundMonthsRemaining;
+
     }
 
     struct StakingPlan {
@@ -145,7 +148,9 @@ contract TimeAlly {
             stakingPlanId: _stakingPlanId,
             status: 1,
             accruedExaEsAmount: 0,
-            loanId: 0
+            loanId: 0,
+            refundMonthClaimedLast: 0,
+            refundMonthsRemaining: 0
         }));
 
         emit NewStaking(msg.sender, _stakingPlanId, _exaEsAmount, userStakingsArray.length - 1);
@@ -206,7 +211,9 @@ contract TimeAlly {
             stakingPlanId: _stakingPlanId,
             status: 1,
             accruedExaEsAmount: 0,
-            loanId: 0
+            loanId: 0,
+            refundMonthClaimedLast: 0,
+            refundMonthsRemaining: 0
         }));
 
         emit NewStaking(msg.sender, _stakingPlanId, reward, userStakingsArray.length - 1);
@@ -356,6 +363,53 @@ contract TimeAlly {
         }
     }
 
+    function cancelStaking(uint256 _stakingId) public {
+        require(stakings[msg.sender][_stakingId].status == 1, 'to cansal, staking must be active');
+
+        stakings[msg.sender][_stakingId].status = 4;
+
+        uint256 _currentMonth = getCurrentMonth();
+
+        uint256 stakingStartMonth = stakings[msg.sender][_stakingId].timestamp.sub(deployedTimestamp).div(earthSecondsInMonth);
+
+        uint256 stakeEndMonth = stakingStartMonth + stakingPlans[stakings[msg.sender][_stakingId].stakingPlanId].months;
+
+        for(uint256 j = _currentMonth + 1; j <= stakeEndMonth; j++) {
+            totalActiveStakings[j] = totalActiveStakings[j].sub(stakings[msg.sender][_stakingId].exaEsAmount);
+        }
+
+        // logic for 24 month withdraw
+        stakings[msg.sender][_stakingId].refundMonthClaimedLast = getCurrentMonth();
+        stakings[msg.sender][_stakingId].refundMonthsRemaining = 24;
+    }
+
+    function withdrawCancelStaking(uint256 _stakingId) public {
+        // calculate how much months can be withdrawn and mark it and transfer it to user.
+
+        require(stakings[msg.sender][_stakingId].status == 4, 'staking must be cancelled');
+        require(stakings[msg.sender][_stakingId].refundMonthsRemaining > 0, 'all refunds are claimed');
+
+        uint256 _currentMonth = getCurrentMonth();
+
+        // the last month to current month would tell months not claimed
+        // min ( diff, remaining ) must be taken
+
+        uint256 _withdrawMonths = _currentMonth.sub(stakings[msg.sender][_stakingId].refundMonthClaimedLast);
+
+        if(_withdrawMonths > stakings[msg.sender][_stakingId].refundMonthsRemaining) {
+            _withdrawMonths = stakings[msg.sender][_stakingId].refundMonthsRemaining;
+        }
+
+        uint256 _amountToTransfer = stakings[msg.sender][_stakingId].exaEsAmount
+                                      .mul(_withdrawMonths).div(24);
+
+        stakings[msg.sender][_stakingId].refundMonthClaimedLast = getCurrentMonth();
+        stakings[msg.sender][_stakingId].refundMonthsRemaining = stakings[msg.sender][_stakingId].refundMonthsRemaining.sub(_withdrawMonths);
+
+        token.transfer(msg.sender, _amountToTransfer);
+
+    }
+
     function timeAllyMonthlyNRTArray() public view returns (uint256[] memory) {
         return timeAllyMonthlyNRT;
     }
@@ -404,12 +458,8 @@ contract TimeAlly {
 
                 uint256 stakeEndMonth = stakingStartMonth + stakingPlans[stakings[msg.sender][_stakingIds[i]].stakingPlanId].months;
 
-                for(uint256 j = 1; j <= stakeEndMonth; j++) {
-                    if(totalActiveStakings[_currentMonth + j] > _userStakingsExaEsAmount) {
-                        totalActiveStakings[_currentMonth + j] = totalActiveStakings[_currentMonth + j].sub(_userStakingsExaEsAmount);
-                    } else {
-                        totalActiveStakings[_currentMonth + j] = 0;
-                    }
+                for(uint256 j = _currentMonth + 1; j <= stakeEndMonth; j++) {
+                    totalActiveStakings[j] = totalActiveStakings[j].sub(_userStakingsExaEsAmount);
                 }
 
                 //make stakings inactive
