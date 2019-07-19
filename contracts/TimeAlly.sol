@@ -2,6 +2,14 @@ pragma solidity ^0.5.10;
 
 import './SafeMath.sol';
 import './Eraswap.sol';
+import './NRTManager.sol';
+
+/*
+
+Potential bugs: this contract is designed assuming NRT Release will happen every month.
+There might be issues when the NRT scheduled 
+
+*/
 
 contract TimeAlly {
 
@@ -27,18 +35,18 @@ contract TimeAlly {
         uint256 timestamp;
         uint256 loanPlanId;
         uint256 status;
-        uint256 stakingId;
+        uint256[] stakingIds;
     }
 
     struct LoanPlan {
-        uint256 loanPeriod;
+        uint256 loanMonths;
         uint256 loanRate;
     }
 
 
     address public owner;
-    address public nrtAddress;
     Eraswap public token;
+    NRTManager public nrtManager;
 
     uint256 deployedTimestamp;
     uint256 earthSecondsInMonth = 2629744;
@@ -61,15 +69,23 @@ contract TimeAlly {
     mapping(address => uint256) public launchReward;
 
     // need stakingid in this
-    event NewStaking(
+    event NewStaking (
         address indexed _staker,
         uint256 indexed _stakePlanId,
         uint256 _exaEsAmount,
         uint256 _stakingId
     );
 
+    event NewLoan (
+        address indexed _loaner,
+        uint256 indexed _loanPlanId,
+        uint256 _exaEsAmount,
+        uint256 _loanInterest,
+        uint256 _loanId
+    );
+
     modifier onlyNRTManager() {
-        require(msg.sender == nrtAddress, 'only NRT manager can call');
+        require(msg.sender == address(nrtManager), 'only NRT manager can call');
         _;
     }
 
@@ -81,12 +97,12 @@ contract TimeAlly {
     constructor(address _tokenAddress, address _nrtAddress) public {
         owner = msg.sender;
         token = Eraswap(_tokenAddress);
-        nrtAddress = _nrtAddress;
+        nrtManager = NRTManager(_nrtAddress);
         deployedTimestamp = token.mou();
         timeAllyMonthlyNRT.push(0);
     }
 
-    function increaseMonth(uint256 _timeAllyNRT) public onlyNRTManager() {
+    function increaseMonth(uint256 _timeAllyNRT) public onlyNRTManager {
         timeAllyMonthlyNRT.push(_timeAllyNRT);
     }
 
@@ -94,10 +110,17 @@ contract TimeAlly {
         return timeAllyMonthlyNRT.length - 1;
     }
 
-    function createStakingPlan(uint256 _months, uint256 _fractionFrom15) public onlyOwner() {
+    function createStakingPlan(uint256 _months, uint256 _fractionFrom15) public onlyOwner {
         stakingPlans.push(StakingPlan({
             months: _months,
             fractionFrom15: _fractionFrom15
+        }));
+    }
+
+    function createLoanPlan(uint256 _loanMonths, uint256 _loanRate) public onlyOwner {
+        loanPlans.push(LoanPlan({
+            loanMonths: _loanMonths,
+            loanRate: _loanRate
         }));
     }
 
@@ -189,6 +212,7 @@ contract TimeAlly {
         emit NewStaking(msg.sender, _stakingPlanId, reward, userStakingsArray.length - 1);
     }
 
+    // returns true is staking is in correct time frame and also no loan on it
     function isStakingActive(address _userAddress, uint256 _stakingId, uint256 _currentMonth, uint256 _atMonth) public view returns (bool) {
       uint256 stakingMonth = stakings[_userAddress][_stakingId].timestamp.sub(deployedTimestamp).div(earthSecondsInMonth);
 
@@ -211,20 +235,12 @@ contract TimeAlly {
         uint256 _currentMonth = getCurrentMonth();
         require(_currentMonth >= _atMonth, 'cannot see future stakings');
 
-        if(totalActiveStakings[_atMonth] == 0) {
-            return 0;
-        }
-
         uint256 userActiveStakingsExaEsAmount;
 
         for(uint256 i = 0; i < stakings[_userAddress].length; i++) {
-            // StakingPlan memory plan = stakingPlans[ stakings[_userAddress][i].stakingPlanId ];
 
             // user staking should be active for it to be considered
-
-
-            if(isStakingActive(_userAddress, i, _currentMonth, _atMonth)
-              && !stakings[_userAddress][i].isMonthClaimed[_atMonth]) {
+            if(isStakingActive(_userAddress, i, _currentMonth, _atMonth)) {
                 userActiveStakingsExaEsAmount = userActiveStakingsExaEsAmount
                     .add(stakings[_userAddress][i].exaEsAmount
                     .mul(stakingPlans[ stakings[_userAddress][i].stakingPlanId ].fractionFrom15)
@@ -232,7 +248,7 @@ contract TimeAlly {
             }
         }
 
-        return userActiveStakingsExaEsAmount;//.mul(timeAllyMonthlyNRT[_atMonth]).div(totalActiveStakings[_atMonth]);
+        return userActiveStakingsExaEsAmount;
     }
 
 
@@ -263,13 +279,10 @@ contract TimeAlly {
         return userActiveStakingsExaEsAmount.mul(timeAllyMonthlyNRT[_atMonth]).div(totalActiveStakings[_atMonth]);
     }
 
-    function withdrawShareForUserByMonth(uint256 _atMonth, uint256 _accruedPercentage) public {
+    function withdrawShareForUserByMonth(uint256 _atMonth, uint256 _accruedPercentage, bool _stakeAccruedNow, uint256 _accruedsStakingPlan) public {
         uint256 _currentMonth = getCurrentMonth();
 
         require(_currentMonth >= _atMonth, 'cannot withdraw future stakings');
-
-        //require(!monthClaim[msg.sender][_currentMonth], 'cannot claim again');
-        //monthClaim[msg.sender][_currentMonth] = true;
 
         if(totalActiveStakings[_currentMonth] == 0) {
             require(false, 'total active stakings should be non zero');
@@ -277,11 +290,11 @@ contract TimeAlly {
 
         require(_accruedPercentage >= 50, 'accruedPercentage should be at least 50');
 
-        uint256 userActiveStakingsExaEsAmount;
-        uint256 accruedPercentage = _accruedPercentage;
+        uint256 _userActiveStakingsExaEsAmount;
+        uint256 _shareTotalCurrentAccrued;
 
         for(uint256 i = 0; i < stakings[msg.sender].length; i++) {
-            StakingPlan memory plan = stakingPlans[ stakings[msg.sender][i].stakingPlanId ];
+            StakingPlan memory _plan = stakingPlans[ stakings[msg.sender][i].stakingPlanId ];
 
             // user staking should be active for it to be considered
             if(isStakingActive(msg.sender, i, _currentMonth, _atMonth)
@@ -289,31 +302,38 @@ contract TimeAlly {
                 stakings[msg.sender][i].isMonthClaimed[_atMonth] = true;
 
                 // for every staking, incrementing its accrued amount
-                uint256 effectiveAmount = stakings[msg.sender][i].exaEsAmount.mul(plan.fractionFrom15).div(15);
-                uint256 accruedShare = effectiveAmount.mul(accruedPercentage).div(100);
-                stakings[msg.sender][i].accruedExaEsAmount = stakings[msg.sender][i].accruedExaEsAmount.add(accruedShare);
-
-                userActiveStakingsExaEsAmount = userActiveStakingsExaEsAmount.add(effectiveAmount);
+                uint256 _effectiveAmount = stakings[msg.sender][i].exaEsAmount.mul(_plan.fractionFrom15).div(15);
+                uint256 _accruedShare = _effectiveAmount.mul(_accruedPercentage).div(100);
+                if(_stakeAccruedNow) {
+                    stakings[msg.sender][i].accruedExaEsAmount = stakings[msg.sender][i].accruedExaEsAmount.add(_accruedShare);
+                } else {
+                    _shareTotalCurrentAccrued = _shareTotalCurrentAccrued.add(_accruedShare);
+                }
+                _userActiveStakingsExaEsAmount = _userActiveStakingsExaEsAmount.add(_effectiveAmount);
             }
         }
 
-        uint256 liquidShare = userActiveStakingsExaEsAmount
+        uint256 _liquidShare = _userActiveStakingsExaEsAmount
                                 .mul(timeAllyMonthlyNRT[_currentMonth])
                                 .div(totalActiveStakings[_currentMonth])
-                                .mul(100 - accruedPercentage).div(100);
+                                .mul(100 - _accruedPercentage).div(100);
 
-        if(liquidShare > 0) {
-            token.transfer(msg.sender, liquidShare);
+        if(_liquidShare > 0) {
+            token.transfer(msg.sender, _liquidShare);
+        }
+
+        if(_stakeAccruedNow) {
+            newStaking(_shareTotalCurrentAccrued, _accruedsStakingPlan);
         }
     }
 
     function restakeAccrued(uint256 _stakingId, uint256 _stakingPlanId) public {
         require(stakings[msg.sender][_stakingId].accruedExaEsAmount > 0);
 
-        uint256 accruedExaEsAmount = stakings[msg.sender][_stakingId].accruedExaEsAmount;
+        uint256 _accruedExaEsAmount = stakings[msg.sender][_stakingId].accruedExaEsAmount;
         stakings[msg.sender][_stakingId].accruedExaEsAmount = 0;
         newStaking(
-          accruedExaEsAmount,
+          _accruedExaEsAmount,
           _stakingPlanId
         );
     }
@@ -338,5 +358,132 @@ contract TimeAlly {
 
     function timeAllyMonthlyNRTArray() public view returns (uint256[] memory) {
         return timeAllyMonthlyNRT;
+    }
+
+    function seeMaxLoaningAmountOnUserStakings(address _userAddress, uint256[] memory _stakingIds) public view returns (uint256) {
+        uint256 _currentMonth = getCurrentMonth();
+        //require(_currentMonth >= _atMonth, 'cannot see future stakings');
+
+        uint256 userStakingsExaEsAmount;
+
+        for(uint256 i = 0; i < _stakingIds.length; i++) {
+
+            if(isStakingActive(_userAddress, _stakingIds[i], _currentMonth, _currentMonth)
+              // && !stakings[_userAddress][_stakingIds[i]].isMonthClaimed[_currentMonth]
+            ) {
+                userStakingsExaEsAmount = userStakingsExaEsAmount
+                    .add(stakings[_userAddress][_stakingIds[i]].exaEsAmount
+                    .mul(stakingPlans[ stakings[_userAddress][_stakingIds[i]].stakingPlanId ].fractionFrom15)
+                    .div(15));
+            }
+        }
+
+        return userStakingsExaEsAmount.div(2);
+            //.mul( uint256(100).sub(loanPlans[_loanPlanId].loanRate) ).div(100);
+    }
+
+    function takeLoanOnSelfStaking(uint256 _loanPlanId, uint256 _exaEsAmount, uint256[] memory _stakingIds) public {
+        // when loan is to be taken, first calculate active stakings from given stakings array. this way we can get how much loan user can take and simultaneously mark stakings as claimed for next months number loan period
+        uint256 _currentMonth = getCurrentMonth();
+        uint256 _userStakingsExaEsAmount;
+
+        for(uint256 i = 0; i < _stakingIds.length; i++) {
+
+            if( isStakingActive(msg.sender, _stakingIds[i], _currentMonth, _currentMonth) ) {
+
+                // store sum in a number
+                _userStakingsExaEsAmount = _userStakingsExaEsAmount
+                    .add(
+                        stakings[msg.sender][ _stakingIds[i] ].exaEsAmount
+                        .mul( stakingPlans[ stakings[msg.sender][_stakingIds[i]].stakingPlanId ].fractionFrom15 )
+                        .div(15)
+                );
+
+                // subtract total active stakings
+                uint256 stakingStartMonth = stakings[msg.sender][_stakingIds[i]].timestamp.sub(deployedTimestamp).div(earthSecondsInMonth);
+
+                uint256 stakeEndMonth = stakingStartMonth + stakingPlans[stakings[msg.sender][_stakingIds[i]].stakingPlanId].months;
+
+                for(uint256 j = 1; j <= stakeEndMonth; j++) {
+                    if(totalActiveStakings[_currentMonth + j] > _userStakingsExaEsAmount) {
+                        totalActiveStakings[_currentMonth + j] = totalActiveStakings[_currentMonth + j].sub(_userStakingsExaEsAmount);
+                    } else {
+                        totalActiveStakings[_currentMonth + j] = 0;
+                    }
+                }
+
+                //make stakings inactive
+                for(uint256 j = 1; j <= loanPlans[_loanPlanId].loanMonths; j++) {
+                    stakings[msg.sender][ _stakingIds[i] ].isMonthClaimed[ _currentMonth + j ] = true;
+                    stakings[msg.sender][ _stakingIds[i] ].status = 2; // means in loan
+                }
+            }
+        }
+
+        uint256 _maxLoaningAmount = _userStakingsExaEsAmount.div(2);
+
+        if(_exaEsAmount > _maxLoaningAmount) {
+            require(false, 'cannot loan more than maxLoaningAmount');
+        }
+
+
+        uint256 _loanInterest = _exaEsAmount.mul(loanPlans[_loanPlanId].loanRate).div(100);
+        uint256 _loanAmountToTransfer = _exaEsAmount.sub(_loanInterest);
+
+        require( token.transfer(address(nrtManager), _loanInterest) );
+        require( nrtManager.UpdateLuckpool(_loanInterest) );
+
+        // change this logic and make all stakings inactive, subtract all of them from the calender
+        // // subtract total active stakings
+        // for(uint256 i = 1; i <= loanPlans[_loanPlanId].loanMonths; i++) {
+        //     if(totalActiveStakings[_currentMonth + i] > _userStakingsExaEsAmount) {
+        //         totalActiveStakings[_currentMonth + i] = totalActiveStakings[_currentMonth + i].sub(_userStakingsExaEsAmount);
+        //     } else {
+        //         totalActiveStakings[_currentMonth + i] = 0;
+        //     }
+        // }
+
+        loans[msg.sender].push(Loan({
+            exaEsAmount: _exaEsAmount,
+            timestamp: token.mou(),
+            loanPlanId: _loanPlanId,
+            status: 1,
+            stakingIds: _stakingIds
+        }));
+
+        // send user amount
+        require( token.transfer(msg.sender, _loanAmountToTransfer) );
+
+        emit NewLoan(msg.sender, _loanPlanId, _exaEsAmount, _loanInterest, loans[msg.sender].length - 1);
+    }
+
+    // repay loan functionality
+    function repayLoanSelf(uint256 _loanId) public {
+        require(loans[msg.sender][_loanId].status == 1, 'can only repay pending loans');
+
+        require(token.transferFrom(msg.sender, address(this), loans[msg.sender][_loanId].exaEsAmount), 'cannot receive enough tokens, please check if allowance is there');
+
+        loans[msg.sender][_loanId].status = 2;
+
+        // get all stakings associated with this loan.
+        // and set next unclaimed months.
+        // set status to 1
+        // also add to totalActiveStakings
+        for(uint256 i = 0; i < loans[msg.sender][_loanId].stakingIds.length; i++) {
+            uint256 _stakingId = loans[msg.sender][_loanId].stakingIds[i];
+
+            stakings[msg.sender][_stakingId].status = 1;
+
+            uint256 stakingStartMonth = stakings[msg.sender][_stakingId].timestamp.sub(deployedTimestamp).div(earthSecondsInMonth);
+
+            uint256 stakeEndMonth = stakingStartMonth + stakingPlans[stakings[msg.sender][_stakingId].stakingPlanId].months;
+
+            for(uint256 j = getCurrentMonth() + 1; j <= stakeEndMonth; j++) {
+                stakings[msg.sender][_stakingId].isMonthClaimed[i] = false;
+
+                totalActiveStakings[j] = totalActiveStakings[j].add(stakings[msg.sender][_stakingId].exaEsAmount);
+            }
+        }
+
     }
 }
