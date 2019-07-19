@@ -7,17 +7,11 @@ TimeAlly is a meticulously crafted smart contract to reduce the volatility of Er
 - `node compile.js`
 - `npm test`
 
-## Actors Involved
-
-- TimeAlly Contract (allocates the funds received from NRT to users)
-- Users (stakes ES in the contract)
-- Maintainers (maintains the contract)
-
 ## Utility of TimeAlly
 ### Staking
-- User comes to the contract and stakes ES. His ES amount is locked according to the plan he chooses.
-- Every month, NRT sends some ES to the contract. This contract allocates portions of this ES to users proportional to the amount of active staking during the moment of NRT Release.
-- User can withdraw his 50% NRT share stored in TimeAlly anytime and he/she has to stake the other 50%. For this user has to do a transaction every month. Before withdrawing, user can check how much is his/her share for free.
+- User comes to the contract and stakes ES. His/her ES amount is locked according to the plan he/she chooses.
+- Every month, NRT sends some ES to the TimeAlly contract. This contract allocates portions of this ES to users proportional to the amount of active staking.
+- User can withdraw upto 50% benefit share stored in TimeAlly anytime after NRT release and rest of the ES is stored in accrued. User can anytime make a new staking of amount accrued. Before withdrawing, user can read how much is his/her share for current and past months.
 
 ### Loan
-- User can take loan on the basis of his/her staking and repay the loan in time as per loan plan.
+- User can take loan upto 50% of it's staking and repay the loan in time as per loan plan.
