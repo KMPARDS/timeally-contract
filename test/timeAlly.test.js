@@ -262,6 +262,22 @@ describe('first month in TimeAlly', async() => {
       assert.ok(benefit.eq(0));
     });
 
+    it(`account ${accountId} tries to withdraw his/her benefit get error as he/she staked 10 days later`, async() => {
+      const currentMonth = await timeAllyInstance[0].getCurrentMonth();
+      // const numberOfStakings = await timeAllyInstance[0].functions
+      //   .getNumberOfStakingsByUser(accounts[1]);
+      // let stakingIdsArray = [];
+      // for(let i = 0; i < numberOfStakings; i++) stakingIdsArray.push(i);
+      try {
+        const tx = await timeAllyInstance[accountId].functions
+          .withdrawShareForUserByMonth(currentMonth, 50, false, 0);
+        await tx.wait();
+        assert(false, 'should get error');
+      } catch (e) {
+        assert(true, 'should get error');
+      }
+    });
+
     it('goes 10 days future in time', async() => {
       const depth = 10 * 24 * 60 * 60;
       await eraSwapInstance[0].goToFuture(depth);
@@ -271,6 +287,27 @@ describe('first month in TimeAlly', async() => {
       const currentMonth = await timeAllyInstance[0].getCurrentMonth();
       const benefit = await timeAllyInstance[0].functions.seeShareForUserByMonth(accounts[accountId], currentMonth);
       assert.ok(benefit.gt(0));
+    });
+
+    it(`account ${accountId} tries to withdraw his/her benefit should get some balance now`, async() => {
+      const oldBalance = await eraSwapInstance[0].functions.balanceOf(accounts[accountId]);
+
+      const currentMonth = await timeAllyInstance[0].getCurrentMonth();
+      // const numberOfStakings = await timeAllyInstance[0].functions
+      //   .getNumberOfStakingsByUser(accounts[1]);
+      // let stakingIdsArray = [];
+      // for(let i = 0; i < numberOfStakings; i++) stakingIdsArray.push(i);
+      // console.log('staking array', stakingIdsArray);
+      const tx = await timeAllyInstance[accountId].functions
+          .withdrawShareForUserByMonth(currentMonth, 50, false, 0);
+      //await tx.wait();
+
+      const newBalance = await eraSwapInstance[0].functions.balanceOf(accounts[accountId]);
+
+      console.log(ethers.utils.formatEther(newBalance.sub(oldBalance)));
+      assert.ok(newBalance.sub(oldBalance).gt(0));
+      // if(benefit) console.log(`account ${accountId} benefit ${ethers.utils.formatEther(benefit)} ES`);
+      // assert.ok(benefit.eq(0));
     });
 
   })(testCases[testCases.length - 1][0]);
