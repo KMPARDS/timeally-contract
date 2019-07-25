@@ -80,6 +80,28 @@ contract TimeAlly {
         uint256 _stakingId
     );
 
+    event NomineeNew (
+        address indexed _userAddress,
+        uint256 indexed _stakingId,
+        address indexed _nomineeAddress
+    );
+
+    event NomineeWithdraw (
+        address indexed _userAddress,
+        uint256 indexed _stakingId,
+        address indexed _nomineeAddress,
+        uint256 _liquid,
+        uint256 _accrued
+    );
+
+    event BenefitWithdrawl (
+        address indexed _userAddress,
+        uint256 _atMonth,
+        uint256 _accruedPercentage,
+        uint256 _liquidShare,
+        uint256 _accruedShare
+    );
+
     event NewLoan (
         address indexed _loaner,
         uint256 indexed _loanPlanId,
@@ -87,6 +109,12 @@ contract TimeAlly {
         uint256 _loanInterest,
         uint256 _loanId
     );
+
+    event RepayLoan (
+        address indexed _userAddress,
+        uint256 _loanId
+    );
+
 
     modifier onlyNRTManager() {
         require(msg.sender == address(nrtManager), 'only NRT manager can call');
@@ -338,16 +366,16 @@ contract TimeAlly {
         }
     }
 
-    function restakeAccrued(uint256 _stakingId, uint256 _stakingPlanId) public {
-        require(stakings[msg.sender][_stakingId].accruedExaEsAmount > 0);
-
-        uint256 _accruedExaEsAmount = stakings[msg.sender][_stakingId].accruedExaEsAmount;
-        stakings[msg.sender][_stakingId].accruedExaEsAmount = 0;
-        newStaking(
-          _accruedExaEsAmount,
-          _stakingPlanId
-        );
-    }
+    // function restakeAccrued(uint256 _stakingId, uint256 _stakingPlanId) public {
+    //     require(stakings[msg.sender][_stakingId].accruedExaEsAmount > 0);
+    //
+    //     uint256 _accruedExaEsAmount = stakings[msg.sender][_stakingId].accruedExaEsAmount;
+    //     stakings[msg.sender][_stakingId].accruedExaEsAmount = 0;
+    //     newStaking(
+    //       _accruedExaEsAmount,
+    //       _stakingPlanId
+    //     );
+    // }
 
     // give in input which which stakings to withdeaw
     function withdrawExpiredStakings(uint256[] memory _stakings) public {
@@ -552,6 +580,7 @@ contract TimeAlly {
         require(stakings[msg.sender][_stakingId].nomination[_nomineeAddress] == 0, 'should not be nominee already');
         stakings[msg.sender][_stakingId].totalNominationShares = stakings[msg.sender][_stakingId].totalNominationShares.add(_shares);
         stakings[msg.sender][_stakingId].nomination[_nomineeAddress] = _shares;
+        emit NomineeNew(msg.sender, _stakingId, _nomineeAddress);
     }
 
     function viewNomination(address _userAddress, uint256 _stakingId, address _nomineeAddress) public view returns (uint256) {
@@ -639,5 +668,6 @@ contract TimeAlly {
         launchReward[msg.sender] = launchReward[msg.sender].add(_nomineeAccruedShare);
 
         // emit a event
+        emit NomineeWithdraw(_userAddress, _stakingId, msg.sender, _nomineeLiquidShare, _nomineeAccruedShare);
     }
 }
