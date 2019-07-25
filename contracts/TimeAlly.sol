@@ -414,6 +414,11 @@ contract TimeAlly {
     //
     // }
     //
+
+
+
+    // later try to uncomment this and see if contract deploys:
+
     function timeAllyMonthlyNRTArray() public view returns (uint256[] memory) {
         return timeAllyMonthlyNRT;
     }
@@ -431,8 +436,9 @@ contract TimeAlly {
             ) {
                 userStakingsExaEsAmount = userStakingsExaEsAmount
                     .add(stakings[_userAddress][_stakingIds[i]].exaEsAmount
-                    .mul(stakingPlans[ stakings[_userAddress][_stakingIds[i]].stakingPlanId ].fractionFrom15)
-                    .div(15));
+                      // .mul(stakingPlans[ stakings[_userAddress][_stakingIds[i]].stakingPlanId ].fractionFrom15)
+                      // .div(15)
+                    );
             }
         }
 
@@ -542,16 +548,18 @@ contract TimeAlly {
     }
 
     function addNominee(uint256 _stakingId, address _nomineeAddress, uint256 _shares) public {
-        require(stakings[msg.sender][_stakingId].nomination[_nomineeAddress] == 0);
+        require(stakings[msg.sender][_stakingId].status == 1, 'staking should active');
+        require(stakings[msg.sender][_stakingId].nomination[_nomineeAddress] == 0, 'should not be nominee already');
         stakings[msg.sender][_stakingId].totalNominationShares = stakings[msg.sender][_stakingId].totalNominationShares.add(_shares);
         stakings[msg.sender][_stakingId].nomination[_nomineeAddress] = _shares;
     }
 
-    function viewNomination(uint256 _stakingId, address _nomineeAddress) public view returns (uint256) {
-        return stakings[msg.sender][_stakingId].nomination[_nomineeAddress];
+    function viewNomination(address _userAddress, uint256 _stakingId, address _nomineeAddress) public view returns (uint256) {
+        return stakings[_userAddress][_stakingId].nomination[_nomineeAddress];
     }
 
     function updateNominee(uint256 _stakingId, address _nomineeAddress, uint256 _shares) public {
+        require(stakings[msg.sender][_stakingId].status == 1, 'staking should active');
         uint256 _oldShares = stakings[msg.sender][_stakingId].nomination[_nomineeAddress];
         if(_shares > _oldShares) {
             uint256 _diff = _shares.sub(_oldShares);
@@ -565,17 +573,22 @@ contract TimeAlly {
     }
 
     function removeNominee(uint256 _stakingId, address _nomineeAddress) public {
+        require(stakings[msg.sender][_stakingId].status == 1, 'staking should active');
         uint256 _oldShares = stakings[msg.sender][_stakingId].nomination[msg.sender];
         stakings[msg.sender][_stakingId].nomination[_nomineeAddress] = 0;
         stakings[msg.sender][_stakingId].totalNominationShares = stakings[msg.sender][_stakingId].totalNominationShares.sub(_oldShares);
     }
 
     function nomineeWithdraw(address _userAddress, uint256 _stakingId) public {
+        // end time stamp > 0
+        uint256 currentTime = token.mou();
+        require( currentTime > (stakings[_userAddress][_stakingId].timestamp
+                    + stakingPlans[stakings[_userAddress][_stakingId].stakingPlanId].months * earthSecondsInMonth
+                    + 12 * earthSecondsInMonth ),
+                    'cannot nominee withdraw before');
+
         uint256 _nomineeShares = stakings[_userAddress][_stakingId].nomination[msg.sender];
         require(_nomineeShares > 0, 'Not a nominee of this staking');
-
-        // end time stamp > 0
-        require( (stakings[_userAddress][_stakingId].timestamp + stakingPlans[stakings[_userAddress][_stakingId].stakingPlanId].months * earthSecondsInMonth) > token.mou(), 'cannot nominee withdraw before');
 
         //uint256 _totalShares = ;
 
