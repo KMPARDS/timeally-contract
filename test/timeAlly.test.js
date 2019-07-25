@@ -270,7 +270,7 @@ describe('first month in TimeAlly', async() => {
       // for(let i = 0; i < numberOfStakings; i++) stakingIdsArray.push(i);
       try {
         const tx = await timeAllyInstance[accountId].functions
-          .withdrawShareForUserByMonth(currentMonth, 50, false, 0);
+          .withdrawShareForUserByMonth(currentMonth, 50);
         await tx.wait();
         assert(false, 'should get error');
       } catch (e) {
@@ -299,7 +299,7 @@ describe('first month in TimeAlly', async() => {
       // for(let i = 0; i < numberOfStakings; i++) stakingIdsArray.push(i);
       // console.log('staking array', stakingIdsArray);
       const tx = await timeAllyInstance[accountId].functions
-          .withdrawShareForUserByMonth(currentMonth, 50, false, 0);
+          .withdrawShareForUserByMonth(currentMonth, 50);
       //await tx.wait();
 
       const newBalance = await eraSwapInstance[0].functions.balanceOf(accounts[accountId]);
@@ -360,33 +360,51 @@ describe('first month in TimeAlly', async() => {
     testCases.forEach(element => {
       const [accountId, amount] = element;
 
-      it(`account ${accountId} withdraws his/her benefit and gets 50% of benefit transfered to him/her and 50% accrued`, async() => {
+      it(`account ${accountId} withdraws his/her benefit and gets 50% of benefit transfered to him/her and 50% in rewards`, async() => {
         const balanceOld = await eraSwapInstance[0].functions.balanceOf(accounts[accountId]);
+        const rewardsOld = await timeAllyInstance[0].functions.launchReward(accounts[accountId]);
         const balanceOfTimeAllyOld = await eraSwapInstance[0].functions.balanceOf(timeAllyInstance[0].address);
 
         const currentMonth = await timeAllyInstance[0].getCurrentMonth();
         await timeAllyInstance[accountId].functions.withdrawShareForUserByMonth(
           currentMonth,
-          50,
-          month === 'third' ? true : false,
-          1 //staking plan id 1, it is ignored if 3rd arg is false
+          50
         );
 
         const balanceNew = await eraSwapInstance[0].functions.balanceOf(accounts[accountId]);
+        const rewardsNew = await timeAllyInstance[0].functions.launchReward(accounts[accountId]);
         const balanceOfTimeAllyNew = await eraSwapInstance[0].functions.balanceOf(timeAllyInstance[0].address);
 
         console.log("\x1b[2m",`\n\t -> account bal of ${accountId} is ${ethers.utils.formatEther(balanceNew)} ES`);
+        console.log('ES received:', ethers.utils.formatEther(balanceNew.sub(balanceOld)) );
 
-        assert.ok(balanceNew.sub(balanceOld).eq(element[3].div(2)), 'liquid balance should be half of benefit');
-        assert.ok(balanceOfTimeAllyOld.sub(balanceOfTimeAllyNew).eq(element[3].div(2)), 'timeally balance should decrease by that amount');
+        console.log('rewards received:', ethers.utils.formatEther(rewardsNew.sub(rewardsOld))
+          // , ethers.utils.formatEther(element[3].div(2))
+        );
+
+        assert.ok(
+          balanceNew.sub(balanceOld).eq(element[3].div(2))
+          || balanceNew.sub(balanceOld).add(1).eq(element[3].div(2))
+          || balanceNew.sub(balanceOld).sub(1).eq(element[3].div(2))
+          , 'liquid balance should be half of benefit');
+        assert.ok(
+          rewardsNew.sub(rewardsOld).eq(element[3].div(2))
+          || rewardsNew.sub(rewardsOld).add(1).eq(element[3].div(2))
+          || rewardsNew.sub(rewardsOld).sub(1).eq(element[3].div(2))
+          , 'rewards should be half of benefit');
+        assert.ok(
+          balanceOfTimeAllyOld.sub(balanceOfTimeAllyNew).eq(element[3].div(2))
+          || balanceOfTimeAllyOld.sub(balanceOfTimeAllyNew).add(1).eq(element[3].div(2))
+          || balanceOfTimeAllyOld.sub(balanceOfTimeAllyNew).sub(1).eq(element[3].div(2))
+          , 'timeally balance should decrease by that amount');
       });
 
-      if(month === 'third') {
-        it(`account ${accountId} also gets a new staking created of this month total accrued as he/she choose for that`, async() => {
-          const numberOfStakings = await timeAllyInstance[0].functions.getNumberOfStakingsByUser(accounts[accountId]);
-          assert.ok(numberOfStakings.gt(1));
-        });
-      }
+      // if(month === 'third') {
+      //   it(`account ${accountId} also gets a new staking created of this month total accrued as he/she choose for that`, async() => {
+      //     const numberOfStakings = await timeAllyInstance[0].functions.getNumberOfStakingsByUser(accounts[accountId]);
+      //     assert.ok(numberOfStakings.gt(1));
+      //   });
+      // }
 
     });
   });
@@ -398,15 +416,23 @@ describe('Withdrawing past benefit', async() => {
     const balanceOfTimeAllyOld = await eraSwapInstance[0].functions.balanceOf(timeAllyInstance[0].address);
 
     const month = 1;
-    await timeAllyInstance[1].functions.withdrawShareForUserByMonth(month, 50, false, 0);
+    await timeAllyInstance[1].functions.withdrawShareForUserByMonth(month, 50);
 
     const balanceNew = await eraSwapInstance[0].functions.balanceOf(accounts[1]);
     const balanceOfTimeAllyNew = await eraSwapInstance[0].functions.balanceOf(timeAllyInstance[0].address);
 
     console.log("\x1b[2m",`\n\t -> account bal of 1 is ${ethers.utils.formatEther(balanceNew)} ES`);
 
-    assert.ok(balanceNew.sub(balanceOld).eq(testCases[0][3].div(2)), 'liquid balance should be half of benefit');
-    assert.ok(balanceOfTimeAllyOld.sub(balanceOfTimeAllyNew).eq(testCases[0][3].div(2)), 'timeally balance should decrease by that amount');
+    assert.ok(
+      balanceNew.sub(balanceOld).eq(testCases[0][3].div(2))
+      || balanceNew.sub(balanceOld).add(1).eq(testCases[0][3].div(2))
+      || balanceNew.sub(balanceOld).sub(1).eq(testCases[0][3].div(2))
+      , 'liquid balance should be half of benefit');
+    assert.ok(
+      balanceOfTimeAllyOld.sub(balanceOfTimeAllyNew).eq(testCases[0][3].div(2))
+      || balanceOfTimeAllyOld.sub(balanceOfTimeAllyNew).add(1).eq(testCases[0][3].div(2))
+      || balanceOfTimeAllyOld.sub(balanceOfTimeAllyNew).sub(1).eq(testCases[0][3].div(2))
+      , 'timeally balance should decrease by that amount');
   });
 });
 

@@ -1,4 +1,4 @@
-pragma solidity ^0.5.10;
+pragma solidity 0.5.10;
 
 import './SafeMath.sol';
 import './Eraswap.sol';
@@ -19,12 +19,12 @@ contract TimeAlly {
         uint256 exaEsAmount;
         uint256 timestamp;
         uint256 stakingPlanId;
-        uint256 status; // 1 => active; 2 => loaned; 3 => withdrawed; 4 => cancelled
-        uint256 accruedExaEsAmount;
+        uint256 status; // 1 => active; 2 => loaned; 3 => withdrawed; 4 => cancelled; 5 =>
+        // uint256 accruedExaEsAmount;
         uint256 loanId;
         mapping (uint256 => bool) isMonthClaimed;
-        uint256 refundMonthClaimedLast;
-        uint256 refundMonthsRemaining;
+        // uint256 refundMonthClaimedLast;
+        // uint256 refundMonthsRemaining;
         uint256 totalNominationShares;
         mapping (address => uint256) nomination;
     }
@@ -74,7 +74,7 @@ contract TimeAlly {
 
     // need stakingid in this
     event NewStaking (
-        address indexed _staker,
+        address indexed _userAddress,
         uint256 indexed _stakePlanId,
         uint256 _exaEsAmount,
         uint256 _stakingId
@@ -103,7 +103,7 @@ contract TimeAlly {
     );
 
     event NewLoan (
-        address indexed _loaner,
+        address indexed _userAddress,
         uint256 indexed _loanPlanId,
         uint256 _exaEsAmount,
         uint256 _loanInterest,
@@ -176,10 +176,10 @@ contract TimeAlly {
             timestamp: token.mou(),
             stakingPlanId: _stakingPlanId,
             status: 1,
-            accruedExaEsAmount: 0,
+            // accruedExaEsAmount: 0,
             loanId: 0,
-            refundMonthClaimedLast: 0,
-            refundMonthsRemaining: 0,
+            // refundMonthClaimedLast: 0,
+            // refundMonthsRemaining: 0,
             totalNominationShares: 0
         }));
 
@@ -200,8 +200,9 @@ contract TimeAlly {
             stakings[_userAddress][_stakingId].timestamp,
             stakings[_userAddress][_stakingId].stakingPlanId,
             stakings[_userAddress][_stakingId].status,
-            stakings[_userAddress][_stakingId].accruedExaEsAmount,
-            stakings[_userAddress][_stakingId].loanId
+            // stakings[_userAddress][_stakingId].accruedExaEsAmount,
+            stakings[_userAddress][_stakingId].loanId,
+            stakings[_userAddress][_stakingId].totalNominationShares
         );
     }
 
@@ -241,10 +242,10 @@ contract TimeAlly {
             timestamp: token.mou(),
             stakingPlanId: _stakingPlanId,
             status: 1,
-            accruedExaEsAmount: 0,
+            // accruedExaEsAmount: 0,
             loanId: 0,
-            refundMonthClaimedLast: 0,
-            refundMonthsRemaining: 0,
+            // refundMonthClaimedLast: 0,
+            // refundMonthsRemaining: 0,
             totalNominationShares: 0
         }));
 
@@ -318,7 +319,7 @@ contract TimeAlly {
         return userActiveStakingsExaEsAmount.mul(timeAllyMonthlyNRT[_atMonth]).div(totalActiveStakings[_atMonth]);
     }
 
-    function withdrawShareForUserByMonth(uint256 _atMonth, uint256 _accruedPercentage, bool _stakeAccruedNow, uint256 _accruedsStakingPlan) public {
+    function withdrawShareForUserByMonth(uint256 _atMonth, uint256 _accruedPercentage) public {
         uint256 _currentMonth = getCurrentMonth();
 
         require(_currentMonth >= _atMonth, 'cannot withdraw future stakings');
@@ -329,8 +330,7 @@ contract TimeAlly {
 
         require(_accruedPercentage >= 50, 'accruedPercentage should be at least 50');
 
-        uint256 _userActiveStakingsExaEsAmount;
-        uint256 _shareTotalCurrentAccrued;
+        uint256 _totalEffectiveStakings;
 
         for(uint256 i = 0; i < stakings[msg.sender].length; i++) {
             StakingPlan memory _plan = stakingPlans[ stakings[msg.sender][i].stakingPlanId ];
@@ -338,32 +338,40 @@ contract TimeAlly {
             // user staking should be active for it to be considered
             if(isStakingActive(msg.sender, i, _currentMonth, _atMonth)
               && !stakings[msg.sender][i].isMonthClaimed[_atMonth]) {
+                // marking user as claimed
                 stakings[msg.sender][i].isMonthClaimed[_atMonth] = true;
 
                 // for every staking, incrementing its accrued amount
                 uint256 _effectiveAmount = stakings[msg.sender][i].exaEsAmount.mul(_plan.fractionFrom15).div(15);
-                uint256 _accruedShare = _effectiveAmount.mul(_accruedPercentage).div(100);
-                if(_stakeAccruedNow) {
-                    stakings[msg.sender][i].accruedExaEsAmount = stakings[msg.sender][i].accruedExaEsAmount.add(_accruedShare);
-                } else {
-                    _shareTotalCurrentAccrued = _shareTotalCurrentAccrued.add(_accruedShare);
-                }
-                _userActiveStakingsExaEsAmount = _userActiveStakingsExaEsAmount.add(_effectiveAmount);
+                // uint256 _accruedShare = _effectiveAmount.mul(_accruedPercentage).div(100);
+                //
+                // _shareTotalCurrentAccrued = _shareTotalCurrentAccrued.add(_accruedShare);
+
+                _totalEffectiveStakings = _totalEffectiveStakings.add(_effectiveAmount);
             }
         }
 
-        uint256 _liquidShare = _userActiveStakingsExaEsAmount
+        uint256 _benefit = _totalEffectiveStakings
                                 .mul(timeAllyMonthlyNRT[_currentMonth])
-                                .div(totalActiveStakings[_currentMonth])
-                                .mul(100 - _accruedPercentage).div(100);
+                                .div(totalActiveStakings[_currentMonth]);
+                                //.mul(100 - _accruedPercentage).div(100);
 
-        if(_liquidShare > 0) {
-            token.transfer(msg.sender, _liquidShare);
+        uint256 _accruedBenefit = _benefit
+                                .mul(_accruedPercentage).div(100);
+
+        uint256 _liquidBenefit = _benefit.sub(_accruedBenefit);
+
+
+
+        if(_liquidBenefit > 0) {
+            token.transfer(msg.sender, _liquidBenefit);
         }
 
-        if(_stakeAccruedNow) {
-            newStaking(_shareTotalCurrentAccrued, _accruedsStakingPlan);
-        }
+        // if(_stakeAccruedNow) {
+        //     newStaking(_shareTotalCurrentAccrued, _accruedsStakingPlan);
+        // }
+
+        launchReward[msg.sender] = launchReward[msg.sender].add(_accruedBenefit);
     }
 
     // function restakeAccrued(uint256 _stakingId, uint256 _stakingPlanId) public {
@@ -382,14 +390,14 @@ contract TimeAlly {
         for(uint256 i = 0; i < _stakings.length; i++) {
             stakings[msg.sender][_stakings[i]].status = 3;
 
-            if(stakings[msg.sender][_stakings[i]].accruedExaEsAmount > 0) {
-              uint256 accruedExaEsAmount = stakings[msg.sender][_stakings[i]].accruedExaEsAmount;
-              stakings[msg.sender][_stakings[i]].accruedExaEsAmount = 0;
-              newStaking(
-                accruedExaEsAmount,
-                stakings[msg.sender][_stakings[i]].stakingPlanId
-              );
-            }
+            // if(stakings[msg.sender][_stakings[i]].accruedExaEsAmount > 0) {
+            //   uint256 accruedExaEsAmount = stakings[msg.sender][_stakings[i]].accruedExaEsAmount;
+            //   stakings[msg.sender][_stakings[i]].accruedExaEsAmount = 0;
+            //   newStaking(
+            //     accruedExaEsAmount,
+            //     stakings[msg.sender][_stakings[i]].stakingPlanId
+            //   );
+            // }
 
             token.transfer(msg.sender, stakings[msg.sender][_stakings[i]].exaEsAmount);
         }
