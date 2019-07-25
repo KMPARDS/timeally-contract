@@ -452,7 +452,7 @@ describe('Loan', async() => {
 
   it('time travelling to the future by 1 month using mou() time machine && invoking monthly NRT', async() => {
     const currentTime = await eraSwapInstance[0].mou();
-    const depth = 30 * 24 * 60 * 60;
+    const depth = 30.5 * 24 * 60 * 60;
     await eraSwapInstance[0].goToFuture(depth);
     const currentTimeAfterComingOutFromTimeMachine = await eraSwapInstance[0].mou();
 
@@ -473,11 +473,22 @@ describe('Loan', async() => {
   });
 });
 
-describe('next year in TimeAlly', async() => {
-  for(let i = 0; i < 12; i++) {
-    it('time travelling to the future by 1 month using mou() time machine && invoking monthly NRT', async() => {
-      const currentTime = await eraSwapInstance[0].mou();
-      const depth = 30 * 24 * 60 * 60;
+describe('Nominee', async() => {
+  it('Account 2 can make Account 3 and Account 4 nominee of his staking id 0', async() => {
+    await timeAllyInstance[2].functions.addNominee(0, accounts[3], 500);
+    await timeAllyInstance[2].functions.addNominee(0, accounts[4], 500);
+
+    const nominationOf3 = await timeAllyInstance[0].functions.viewNomination(accounts[2], 0, accounts[3]);
+    const nominationOf4 = await timeAllyInstance[0].functions.viewNomination(accounts[2], 0, accounts[4]);
+
+    assert.ok(nominationOf3.eq(500), 'nomination should be 500');
+    assert.ok(nominationOf3.eq(500), 'nomination should be 500');
+  });
+
+  it('time travelling to the future by 1 year using mou() time machine && invoking monthly NRT every month', async() => {
+    const currentTime = await eraSwapInstance[0].mou();
+    for(let i = 0; i < 12; i++) {
+      const depth = 30.5 * 24 * 60 * 60;
       await eraSwapInstance[0].goToFuture(depth);
       const currentTimeAfterComingOutFromTimeMachine = await eraSwapInstance[0].mou();
 
@@ -487,36 +498,94 @@ describe('next year in TimeAlly', async() => {
       );
 
       await nrtManagerInstance[0].MonthlyNRTRelease();
-    });
-  }
-
-  it('goes 17 days in future', async() => {
-    const depth = 17 * 24 * 60 * 60;
-    await eraSwapInstance[0].goToFuture(depth);
-  });
-
-  it('user 1 sees for past unclaimed benefits', async() => {
-    const currentMonth = (await timeAllyInstance[0].getCurrentMonth()).toNumber();
-    console.log(`\nMonth: ${currentMonth} is there`);
-
-    console.log('\nMonthly NRT array');
-    (await timeAllyInstance[0].timeAllyMonthlyNRTArray()).forEach(
-      (el, index) => console.log('month '+index+ ': ' + ethers.utils.formatEther(el))
-    );
-
-    console.log('\nuserActiveStakingByMonth of account 1');
-    for(let i = 0; i <= currentMonth; i++) {
-      console.log('month '+i+':',ethers.utils.formatEther(await timeAllyInstance[0].userActiveStakingByMonth(accounts[1], i)));
-    }
-
-    console.log('\nTotal active stakings:');
-    for(let i = 0; i < 30; i++) {
-      console.log('month '+i+':', ethers.utils.formatEther(await timeAllyInstance[0].totalActiveStakings(i)));
-    }
-
-    console.log('\nseeShareForUserByMonth of account 1')
-    for(let i = 0; i <= currentMonth; i++) {
-      console.log('month '+i+':',ethers.utils.formatEther(await timeAllyInstance[0].seeShareForUserByMonth(accounts[1], i)));
     }
   });
+
+  it('nominee account 3 (of account 2\'s staking id 0) should get error while calling withdraw function', async() => {
+    try {
+      await timeAllyInstance[3].functions.nomineeWithdraw(accounts[2], 0);
+      assert(false, 'account 3 should not be able to withdraw before 1 year past of end of period of the  staking');
+    } catch (e) {
+      //console.log(e.message);
+      assert(e.message.includes('revert cannot nominee withdraw before'));
+    }
+  });
+
+  it('time travelling to the future by 1 year using mou() time machine && invoking monthly NRT every month', async() => {
+
+    const currentTime = await eraSwapInstance[0].mou();
+    for(let i = 0; i < 12; i++) {
+      const depth = 30.5 * 24 * 60 * 60;
+      await eraSwapInstance[0].goToFuture(depth);
+      const currentTimeAfterComingOutFromTimeMachine = await eraSwapInstance[0].mou();
+
+      assert.ok(
+        currentTimeAfterComingOutFromTimeMachine.sub(currentTime).gte(depth),
+        'time travel should happen successfully'
+      );
+
+      await nrtManagerInstance[0].MonthlyNRTRelease();
+    }
+  });
+
+  it('time travelling to the future by 1 year using mou() time machine && invoking monthly NRT every month', async() => {
+
+    const currentTime = await eraSwapInstance[0].mou();
+    for(let i = 0; i < 12; i++) {
+      const depth = 30.5 * 24 * 60 * 60;
+      await eraSwapInstance[0].goToFuture(depth);
+      const currentTimeAfterComingOutFromTimeMachine = await eraSwapInstance[0].mou();
+
+      assert.ok(
+        currentTimeAfterComingOutFromTimeMachine.sub(currentTime).gte(depth),
+        'time travel should happen successfully'
+      );
+
+      await nrtManagerInstance[0].MonthlyNRTRelease();
+    }
+  });
+
+  it('nominee account 3 (of account 2\'s staking id 0) should get error while calling withdraw function', async() => {
+    const oldBalance = await eraSwapInstance[0].functions.balanceOf(accounts[3]);
+    await timeAllyInstance[3].functions.nomineeWithdraw(accounts[2], 0);
+    const newBalance = await eraSwapInstance[0].functions.balanceOf(accounts[3]);
+
+    console.log(ethers.utils.formatEther(newBalance.sub(oldBalance)));
+    assert.ok(newBalance.sub(oldBalance).gt(0));
+  });
+
 });
+
+//describe('next year in TimeAlly', async() => {
+
+
+  // it('goes 17 days in future', async() => {
+  //   const depth = 17 * 24 * 60 * 60;
+  //   await eraSwapInstance[0].goToFuture(depth);
+  // });
+
+  // it('user 1 sees for past unclaimed benefits', async() => {
+  //   const currentMonth = (await timeAllyInstance[0].getCurrentMonth()).toNumber();
+  //   console.log(`\nMonth: ${currentMonth} is there`);
+  //
+  //   console.log('\nMonthly NRT array');
+  //   (await timeAllyInstance[0].timeAllyMonthlyNRTArray()).forEach(
+  //     (el, index) => console.log('month '+index+ ': ' + ethers.utils.formatEther(el))
+  //   );
+  //
+  //   console.log('\nuserActiveStakingByMonth of account 1');
+  //   for(let i = 0; i <= currentMonth; i++) {
+  //     console.log('month '+i+':',ethers.utils.formatEther(await timeAllyInstance[0].userActiveStakingByMonth(accounts[1], i)));
+  //   }
+  //
+  //   console.log('\nTotal active stakings:');
+  //   for(let i = 0; i < ; i++) {
+  //     console.log('month '+i+':', ethers.utils.formatEther(await timeAllyInstance[0].totalActiveStakings(i)));
+  //   }
+  //
+  //   console.log('\nseeShareForUserByMonth of account 1')
+  //   for(let i = 0; i <= currentMonth; i++) {
+  //     console.log('month '+i+':',ethers.utils.formatEther(await timeAllyInstance[0].seeShareForUserByMonth(accounts[1], i)));
+  //   }
+  // });
+//});
