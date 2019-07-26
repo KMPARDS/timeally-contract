@@ -439,8 +439,8 @@ contract TimeAlly {
         }
 
         uint256 _effectiveBenefit = _userTotalEffectiveStakings
-                                .mul(timeAllyMonthlyNRT[_currentMonth])
-                                .div(totalActiveStakings[_currentMonth]);
+                                .mul(timeAllyMonthlyNRT[_atMonth])
+                                .div(totalActiveStakings[_atMonth]);
                                 //.mul(100 - _accruedPercentage).div(100);
 
         require(_effectiveBenefit > 0
@@ -449,8 +449,8 @@ contract TimeAlly {
 
 
         uint256 _pseudoBenefit = _userTotalActiveStakings
-                                .mul(timeAllyMonthlyNRT[_currentMonth])
-                                .div(totalActiveStakings[_currentMonth]);
+                                .mul(timeAllyMonthlyNRT[_atMonth])
+                                .div(totalActiveStakings[_atMonth]);
 
         uint256 _luckPool = _pseudoBenefit.sub(_effectiveBenefit);
         require( token.transfer(address(nrtManager), _luckPool) );
@@ -467,6 +467,64 @@ contract TimeAlly {
 
         launchReward[msg.sender] = launchReward[msg.sender].add(_accruedBenefit);
     }
+
+
+    function seeBenefitOfAStakingByMonths(
+        address _userAddress,
+        uint256 _stakingId,
+        uint256[] memory _months
+    ) public view returns (uint256) {
+        uint256 benefitOfAllMonths;
+        for(uint256 i = 0; i < _months.length; i++) {
+            require(
+              isStakingActive(_userAddress, _stakingId, _months[i])
+              && !stakings[_userAddress][_stakingId].isMonthClaimed[_months[i]]
+              // , 'staking must be active'
+            );
+            uint256 benefit = stakings[_userAddress][_stakingId].exaEsAmount
+                              .mul(timeAllyMonthlyNRT[ _months[i] ])
+                              .div(totalActiveStakings[ _months[i] ]);
+            benefitOfAllMonths = benefitOfAllMonths.add(benefit);
+        }
+        return benefitOfAllMonths.mul(
+          stakingPlans[stakings[_userAddress][_stakingId].stakingPlanId].fractionFrom15
+        ).div(15);
+    }
+
+    // function withdrawBenefitOfAStakingByMonths(
+    //     uint256 _stakingId,
+    //     uint256[] memory _months
+    // ) public {
+    //     uint256 _benefitOfAllMonths;
+    //     for(uint256 i = 0; i < _months.length; i++) {
+    //         require(
+    //           isStakingActive(msg.sender, _stakingId, _months[i])
+    //           && !stakings[msg.sender][_stakingId].isMonthClaimed[_months[i]]
+    //           // , 'staking must be active'
+    //         );
+    //         uint256 _benefit = stakings[msg.sender][_stakingId].exaEsAmount
+    //                           .mul(timeAllyMonthlyNRT[ _months[i] ])
+    //                           .div(totalActiveStakings[ _months[i] ]);
+    //
+    //         _benefitOfAllMonths = _benefitOfAllMonths.add(_benefit);
+    //         stakings[msg.sender][_stakingId].isMonthClaimed[_months[i]] = true;
+    //     }
+    //
+    //     uint256 _luckPool = _benefitOfAllMonths
+    //                     .mul( uint256(15).sub(stakingPlans[stakings[msg.sender][_stakingId].stakingPlanId].fractionFrom15) )
+    //                     .div( 15 );
+    //
+    //     require( token.transfer(address(nrtManager), _luckPool) );
+    //     require( nrtManager.UpdateLuckpool(_luckPool) );
+    //
+    //     _benefitOfAllMonths = _benefitOfAllMonths.sub(_luckPool);
+    //
+    //     uint256 _halfBenefit = _benefitOfAllMonths.div(2);
+    //     require( token.transfer(msg.sender, _halfBenefit) );
+    //
+    //     launchReward[msg.sender] = launchReward[msg.sender].add(_halfBenefit);
+    // }
+
 
     // function restakeAccrued(uint256 _stakingId, uint256 _stakingPlanId) public {
     //     require(stakings[msg.sender][_stakingId].accruedExaEsAmount > 0);
@@ -710,21 +768,21 @@ contract TimeAlly {
         return stakings[_userAddress][_stakingId].nomination[_nomineeAddress];
     }
 
-    function updateNominee(uint256 _stakingId, address _nomineeAddress, uint256 _shares) public {
-        require(stakings[msg.sender][_stakingId].status == 1
-          // , 'staking should active'
-        );
-        uint256 _oldShares = stakings[msg.sender][_stakingId].nomination[_nomineeAddress];
-        if(_shares > _oldShares) {
-            uint256 _diff = _shares.sub(_oldShares);
-            stakings[msg.sender][_stakingId].totalNominationShares = stakings[msg.sender][_stakingId].totalNominationShares.add(_diff);
-            stakings[msg.sender][_stakingId].nomination[_nomineeAddress] = stakings[msg.sender][_stakingId].nomination[_nomineeAddress].add(_diff);
-        } else if(_shares < _oldShares) {
-          uint256 _diff = _oldShares.sub(_shares);
-            stakings[msg.sender][_stakingId].nomination[_nomineeAddress] = stakings[msg.sender][_stakingId].nomination[_nomineeAddress].sub(_diff);
-            stakings[msg.sender][_stakingId].totalNominationShares = stakings[msg.sender][_stakingId].totalNominationShares.sub(_diff);
-        }
-    }
+    // function updateNominee(uint256 _stakingId, address _nomineeAddress, uint256 _shares) public {
+    //     require(stakings[msg.sender][_stakingId].status == 1
+    //       // , 'staking should active'
+    //     );
+    //     uint256 _oldShares = stakings[msg.sender][_stakingId].nomination[_nomineeAddress];
+    //     if(_shares > _oldShares) {
+    //         uint256 _diff = _shares.sub(_oldShares);
+    //         stakings[msg.sender][_stakingId].totalNominationShares = stakings[msg.sender][_stakingId].totalNominationShares.add(_diff);
+    //         stakings[msg.sender][_stakingId].nomination[_nomineeAddress] = stakings[msg.sender][_stakingId].nomination[_nomineeAddress].add(_diff);
+    //     } else if(_shares < _oldShares) {
+    //       uint256 _diff = _oldShares.sub(_shares);
+    //         stakings[msg.sender][_stakingId].nomination[_nomineeAddress] = stakings[msg.sender][_stakingId].nomination[_nomineeAddress].sub(_diff);
+    //         stakings[msg.sender][_stakingId].totalNominationShares = stakings[msg.sender][_stakingId].totalNominationShares.sub(_diff);
+    //     }
+    // }
 
     function removeNominee(uint256 _stakingId, address _nomineeAddress) public {
         require(stakings[msg.sender][_stakingId].status == 1, 'staking should active');

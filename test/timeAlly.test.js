@@ -270,6 +270,12 @@ describe('first month in TimeAlly', async() => {
     assert.ok(benefit.gt(0));
   });
 
+  it('account 1 tries to see benefit of staking id 0 using seeBenefitOfAStakingByMonths', async() => {
+    const benefit = await timeAllyInstance[0].functions.seeBenefitOfAStakingByMonths(accounts[1], 0, [1]);
+    console.log('seeBenefitOfAStakingByMonths', ethers.utils.formatEther(benefit));
+    assert.ok(benefit.gt(0));
+  });
+
   (accountId => {
     // it('goes 10 day past in time', async() => {
     //   const depth = 8 * 24 * 60 * 60;
@@ -463,31 +469,7 @@ describe('first month in TimeAlly', async() => {
   });
 });
 
-describe('Withdrawing past benefit', async() => {
-  it('account 1 can get its first share of his/her staking after withdrawing 2nd and 3rd', async() => {
-    const balanceOld = await eraSwapInstance[0].functions.balanceOf(accounts[1]);
-    const balanceOfTimeAllyOld = await eraSwapInstance[0].functions.balanceOf(timeAllyInstance[0].address);
 
-    const month = 1;
-    await timeAllyInstance[1].functions.withdrawShareForUserByMonth([0], month, 50);
-
-    const balanceNew = await eraSwapInstance[0].functions.balanceOf(accounts[1]);
-    const balanceOfTimeAllyNew = await eraSwapInstance[0].functions.balanceOf(timeAllyInstance[0].address);
-
-    console.log("\x1b[2m",`\n\t -> account bal of 1 is ${ethers.utils.formatEther(balanceNew)} ES`);
-
-    assert.ok(
-      balanceNew.sub(balanceOld).eq(testCases[0][3].div(2))
-      || balanceNew.sub(balanceOld).add(1).eq(testCases[0][3].div(2))
-      || balanceNew.sub(balanceOld).sub(1).eq(testCases[0][3].div(2))
-      , 'liquid balance should be half of benefit');
-    assert.ok(
-      balanceOfTimeAllyOld.sub(balanceOfTimeAllyNew).eq(testCases[0][3].div(2))
-      || balanceOfTimeAllyOld.sub(balanceOfTimeAllyNew).add(1).eq(testCases[0][3].div(2))
-      || balanceOfTimeAllyOld.sub(balanceOfTimeAllyNew).sub(1).eq(testCases[0][3].div(2))
-      , 'timeally balance should decrease by that amount');
-  });
-});
 
 describe('Loan', async() => {
   it('creating a loan plan of 1%', async() => {
@@ -624,6 +606,50 @@ describe('Loan', async() => {
       console.log(err.message);
       assert.ok(err.message.includes('revert'));
     }
+  });
+});
+
+describe('Withdrawing past benefit', async() => {
+  it('account 1 using seeBenefitOfAStakingByMonths to see collective benefits of 1,2,3 months together', async() => {
+    const currentMonth = await timeAllyInstance[0].functions.getCurrentMonth();
+    const monthsArray = [];
+    for(let i = 1; i <= currentMonth; i++) {
+      if(i !== 2 && i !== 3) {
+        monthsArray.push(i);
+      }
+    }
+    console.log(monthsArray);
+    const benefit = await timeAllyInstance[0].functions.seeBenefitOfAStakingByMonths(accounts[1], 0, monthsArray);
+    console.log('seeBenefitOfAStakingByMonths', ethers.utils.formatEther(benefit));
+  });
+
+
+  it('account 1 can get its first share of his/her staking after withdrawing 2nd and 3rd', async() => {
+    const benefit = await timeAllyInstance[0].functions.seeBenefitOfAStakingByMonths(accounts[1], 0, [1]);
+    //console.log('seeBenefitOfAStakingByMonths div 2', ethers.utils.formatEther(benefit.div(2)));
+
+    const balanceOld = await eraSwapInstance[0].functions.balanceOf(accounts[1]);
+    const balanceOfTimeAllyOld = await eraSwapInstance[0].functions.balanceOf(timeAllyInstance[0].address);
+
+    const month = 1;
+    await timeAllyInstance[1].functions.withdrawShareForUserByMonth([0], month, 50);
+
+    const balanceNew = await eraSwapInstance[0].functions.balanceOf(accounts[1]);
+    const balanceOfTimeAllyNew = await eraSwapInstance[0].functions.balanceOf(timeAllyInstance[0].address);
+
+    console.log("\x1b[2m",`\n\t -> account bal of 1 is ${ethers.utils.formatEther(balanceNew)} ES`);
+    console.log(ethers.utils.formatEther(balanceNew.sub(balanceOld)));
+
+    assert.ok(
+      balanceNew.sub(balanceOld).eq(benefit.div(2))
+      || balanceNew.sub(balanceOld).add(1).eq(benefit.div(2))
+      || balanceNew.sub(balanceOld).sub(1).eq(benefit.div(2))
+      , 'liquid balance should be half of benefit');
+    assert.ok(
+      balanceOfTimeAllyOld.sub(balanceOfTimeAllyNew).eq(benefit.div(2))
+      || balanceOfTimeAllyOld.sub(balanceOfTimeAllyNew).add(1).eq(benefit.div(2))
+      || balanceOfTimeAllyOld.sub(balanceOfTimeAllyNew).sub(1).eq(benefit.div(2))
+      , 'timeally balance should decrease by that amount');
   });
 });
 
