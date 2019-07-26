@@ -85,7 +85,7 @@ contract NRTManager {
       }
 
           /**
-      * @dev Throws if caller is not timeAlly
+      * @dev Throws if caller is not owner
       */
       modifier OnlyOwner() {
         require(msg.sender == Owner,"Only Owner is authorised");
@@ -210,7 +210,7 @@ contract NRTManager {
         timeSwappersNRT = (NRTBal.mul(25)).div(100);
 
         // sending tokens to respective wallets and emitting events
-        /* token.mint(newTalentsAndPartnerships,newTalentsAndPartnershipsBal);
+        token.mint(newTalentsAndPartnerships,newTalentsAndPartnershipsBal);
         emit NRTTransfer("newTalentsAndPartnerships", newTalentsAndPartnerships, newTalentsAndPartnershipsBal);
 
         token.mint(platformMaintenance,platformMaintenanceBal);
@@ -229,15 +229,15 @@ contract NRTManager {
         emit NRTTransfer("researchAndDevelopment", researchAndDevelopment, researchAndDevelopmentBal);
 
         token.mint(powerToken,powerTokenNRT);
-        emit NRTTransfer("powerToken", powerToken, powerTokenNRT); */
+        emit NRTTransfer("powerToken", powerToken, powerTokenNRT);
 
         token.mint(timeAlly,timeAllyNRT);
         TimeAlly timeAllyContract = TimeAlly(timeAlly);
         timeAllyContract.increaseMonth(timeAllyNRT);
         emit NRTTransfer("stakingContract", timeAlly, timeAllyNRT);
 
-        /* token.mint(timeSwappers,timeSwappersNRT);
-        emit NRTTransfer("timeSwappers", timeSwappers, timeSwappersNRT); */
+        token.mint(timeSwappers,timeSwappersNRT);
+        emit NRTTransfer("timeSwappers", timeSwappers, timeSwappersNRT);
 
         // Reseting NRT
         emit NRTDistributed(NRTBal);
