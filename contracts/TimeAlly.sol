@@ -354,119 +354,119 @@ contract TimeAlly {
     }
 
 
-    function seeShareForUserByMonth(
-      address _userAddress
-      , uint256[] memory _stakingIds
-      , uint256 _atMonth) public view returns (uint256) {
-        // calculate user's active stakings amount for this month
-        // divide by total active stakings to get the fraction.
-        // multiply by the total timeally NRT to get the share and send it to user
-
-        uint256 _currentMonth = getCurrentMonth();
-        require(_atMonth <= _currentMonth
-          // , 'cannot see future stakings'
-        );
-
-        if(totalActiveStakings[_atMonth] == 0) {
-            return 0;
-        }
-
-        uint256 userActiveStakingsExaEsAmount;
-
-        for(uint256 i = 0; i < _stakingIds.length; i++) {
-            StakingPlan memory plan = stakingPlans[ stakings[_userAddress][_stakingIds[i]].stakingPlanId ];
-
-            // user staking should be active for it to be considered
-            if(isStakingActive(_userAddress, _stakingIds[i], _atMonth)
-              && !stakings[_userAddress][_stakingIds[i]].isMonthClaimed[_atMonth]) {
-                userActiveStakingsExaEsAmount = userActiveStakingsExaEsAmount.add(
-                  stakings[_userAddress][_stakingIds[i]].exaEsAmount
-                    .mul(plan.fractionFrom15)
-                    .div(15)
-                );
-            }
-        }
-
-        return userActiveStakingsExaEsAmount.mul(timeAllyMonthlyNRT[_atMonth]).div(totalActiveStakings[_atMonth]);
-    }
-
-    function withdrawShareForUserByMonth(
-      uint256[] memory _stakingIds
-      , uint256 _atMonth
-      , uint256 _accruedPercentage
-    ) public {
-        uint256 _currentMonth = getCurrentMonth();
-
-        require(_currentMonth >= _atMonth
-          // , 'cannot withdraw future stakings'
-        );
-
-        if(totalActiveStakings[_currentMonth] == 0) {
-            require(false
-              // , 'total active stakings should be non zero'
-            );
-        }
-
-        require(_accruedPercentage >= 50
-          // , 'accruedPercentage should be at least 50'
-        );
-
-        uint256 _userTotalEffectiveStakings;
-        uint256 _userTotalActiveStakings;
-
-        for(uint256 i = 0; i < _stakingIds.length; i++) {
-            StakingPlan memory _plan = stakingPlans[ stakings[msg.sender][_stakingIds[i]].stakingPlanId ];
-
-            // user staking should be active for it to be considered
-            if(isStakingActive(msg.sender, _stakingIds[i], _atMonth)
-              && !stakings[msg.sender][_stakingIds[i]].isMonthClaimed[_atMonth]) {
-
-                // marking user as claimed
-                stakings[msg.sender][_stakingIds[i]].isMonthClaimed[_atMonth] = true;
-
-                _userTotalActiveStakings = _userTotalActiveStakings.add(stakings[msg.sender][_stakingIds[i]].exaEsAmount);
-
-                uint256 _effectiveAmount = stakings[msg.sender][_stakingIds[i]].exaEsAmount
-                  .mul(_plan.fractionFrom15).div(15);
-                _userTotalEffectiveStakings = _userTotalEffectiveStakings.add(_effectiveAmount);
-
-                // _luckPool = _luckPool.add(
-                //   stakings[msg.sender][i].exaEsAmount
-                //   .mul( uint256(15).sub(_plan.fractionFrom15) ).div(15)
-                // )
-                // ;
-            }
-        }
-
-        uint256 _effectiveBenefit = _userTotalEffectiveStakings
-                                .mul(timeAllyMonthlyNRT[_atMonth])
-                                .div(totalActiveStakings[_atMonth]);
-                                //.mul(100 - _accruedPercentage).div(100);
-
-        require(_effectiveBenefit > 0
-            // , 'transaction should not confirm for 0 effective benefit'
-        );
-
-
-        uint256 _pseudoBenefit = _userTotalActiveStakings
-                                .mul(timeAllyMonthlyNRT[_atMonth])
-                                .div(totalActiveStakings[_atMonth]);
-
-        uint256 _luckPool = _pseudoBenefit.sub(_effectiveBenefit);
-        require( token.transfer(address(nrtManager), _luckPool) );
-        require( nrtManager.UpdateLuckpool(_luckPool) );
-
-        uint256 _accruedBenefit = _effectiveBenefit
-                                .mul(_accruedPercentage).div(100);
-
-        uint256 _liquidBenefit = _effectiveBenefit.sub(_accruedBenefit);
-
-        if(_liquidBenefit > 0) {
-            token.transfer(msg.sender, _liquidBenefit);
-        }
-
-        launchReward[msg.sender] = launchReward[msg.sender].add(_accruedBenefit);
-    }
+    // function seeShareForUserByMonth(
+    //   address _userAddress
+    //   , uint256[] memory _stakingIds
+    //   , uint256 _atMonth) public view returns (uint256) {
+    //     // calculate user's active stakings amount for this month
+    //     // divide by total active stakings to get the fraction.
+    //     // multiply by the total timeally NRT to get the share and send it to user
+    //
+    //     uint256 _currentMonth = getCurrentMonth();
+    //     require(_atMonth <= _currentMonth
+    //       // , 'cannot see future stakings'
+    //     );
+    //
+    //     if(totalActiveStakings[_atMonth] == 0) {
+    //         return 0;
+    //     }
+    //
+    //     uint256 userActiveStakingsExaEsAmount;
+    //
+    //     for(uint256 i = 0; i < _stakingIds.length; i++) {
+    //         StakingPlan memory plan = stakingPlans[ stakings[_userAddress][_stakingIds[i]].stakingPlanId ];
+    //
+    //         // user staking should be active for it to be considered
+    //         if(isStakingActive(_userAddress, _stakingIds[i], _atMonth)
+    //           && !stakings[_userAddress][_stakingIds[i]].isMonthClaimed[_atMonth]) {
+    //             userActiveStakingsExaEsAmount = userActiveStakingsExaEsAmount.add(
+    //               stakings[_userAddress][_stakingIds[i]].exaEsAmount
+    //                 .mul(plan.fractionFrom15)
+    //                 .div(15)
+    //             );
+    //         }
+    //     }
+    //
+    //     return userActiveStakingsExaEsAmount.mul(timeAllyMonthlyNRT[_atMonth]).div(totalActiveStakings[_atMonth]);
+    // }
+    //
+    // function withdrawShareForUserByMonth(
+    //   uint256[] memory _stakingIds
+    //   , uint256 _atMonth
+    //   , uint256 _accruedPercentage
+    // ) public {
+    //     uint256 _currentMonth = getCurrentMonth();
+    //
+    //     require(_currentMonth >= _atMonth
+    //       // , 'cannot withdraw future stakings'
+    //     );
+    //
+    //     if(totalActiveStakings[_currentMonth] == 0) {
+    //         require(false
+    //           // , 'total active stakings should be non zero'
+    //         );
+    //     }
+    //
+    //     require(_accruedPercentage >= 50
+    //       // , 'accruedPercentage should be at least 50'
+    //     );
+    //
+    //     uint256 _userTotalEffectiveStakings;
+    //     uint256 _userTotalActiveStakings;
+    //
+    //     for(uint256 i = 0; i < _stakingIds.length; i++) {
+    //         StakingPlan memory _plan = stakingPlans[ stakings[msg.sender][_stakingIds[i]].stakingPlanId ];
+    //
+    //         // user staking should be active for it to be considered
+    //         if(isStakingActive(msg.sender, _stakingIds[i], _atMonth)
+    //           && !stakings[msg.sender][_stakingIds[i]].isMonthClaimed[_atMonth]) {
+    //
+    //             // marking user as claimed
+    //             stakings[msg.sender][_stakingIds[i]].isMonthClaimed[_atMonth] = true;
+    //
+    //             _userTotalActiveStakings = _userTotalActiveStakings.add(stakings[msg.sender][_stakingIds[i]].exaEsAmount);
+    //
+    //             uint256 _effectiveAmount = stakings[msg.sender][_stakingIds[i]].exaEsAmount
+    //               .mul(_plan.fractionFrom15).div(15);
+    //             _userTotalEffectiveStakings = _userTotalEffectiveStakings.add(_effectiveAmount);
+    //
+    //             // _luckPool = _luckPool.add(
+    //             //   stakings[msg.sender][i].exaEsAmount
+    //             //   .mul( uint256(15).sub(_plan.fractionFrom15) ).div(15)
+    //             // )
+    //             // ;
+    //         }
+    //     }
+    //
+    //     uint256 _effectiveBenefit = _userTotalEffectiveStakings
+    //                             .mul(timeAllyMonthlyNRT[_atMonth])
+    //                             .div(totalActiveStakings[_atMonth]);
+    //                             //.mul(100 - _accruedPercentage).div(100);
+    //
+    //     require(_effectiveBenefit > 0
+    //         // , 'transaction should not confirm for 0 effective benefit'
+    //     );
+    //
+    //
+    //     uint256 _pseudoBenefit = _userTotalActiveStakings
+    //                             .mul(timeAllyMonthlyNRT[_atMonth])
+    //                             .div(totalActiveStakings[_atMonth]);
+    //
+    //     uint256 _luckPool = _pseudoBenefit.sub(_effectiveBenefit);
+    //     require( token.transfer(address(nrtManager), _luckPool) );
+    //     require( nrtManager.UpdateLuckpool(_luckPool) );
+    //
+    //     uint256 _accruedBenefit = _effectiveBenefit
+    //                             .mul(_accruedPercentage).div(100);
+    //
+    //     uint256 _liquidBenefit = _effectiveBenefit.sub(_accruedBenefit);
+    //
+    //     if(_liquidBenefit > 0) {
+    //         token.transfer(msg.sender, _liquidBenefit);
+    //     }
+    //
+    //     launchReward[msg.sender] = launchReward[msg.sender].add(_accruedBenefit);
+    // }
 
 
     function seeBenefitOfAStakingByMonths(
@@ -491,39 +491,39 @@ contract TimeAlly {
         ).div(15);
     }
 
-    // function withdrawBenefitOfAStakingByMonths(
-    //     uint256 _stakingId,
-    //     uint256[] memory _months
-    // ) public {
-    //     uint256 _benefitOfAllMonths;
-    //     for(uint256 i = 0; i < _months.length; i++) {
-    //         require(
-    //           isStakingActive(msg.sender, _stakingId, _months[i])
-    //           && !stakings[msg.sender][_stakingId].isMonthClaimed[_months[i]]
-    //           // , 'staking must be active'
-    //         );
-    //         uint256 _benefit = stakings[msg.sender][_stakingId].exaEsAmount
-    //                           .mul(timeAllyMonthlyNRT[ _months[i] ])
-    //                           .div(totalActiveStakings[ _months[i] ]);
-    //
-    //         _benefitOfAllMonths = _benefitOfAllMonths.add(_benefit);
-    //         stakings[msg.sender][_stakingId].isMonthClaimed[_months[i]] = true;
-    //     }
-    //
-    //     uint256 _luckPool = _benefitOfAllMonths
-    //                     .mul( uint256(15).sub(stakingPlans[stakings[msg.sender][_stakingId].stakingPlanId].fractionFrom15) )
-    //                     .div( 15 );
-    //
-    //     require( token.transfer(address(nrtManager), _luckPool) );
-    //     require( nrtManager.UpdateLuckpool(_luckPool) );
-    //
-    //     _benefitOfAllMonths = _benefitOfAllMonths.sub(_luckPool);
-    //
-    //     uint256 _halfBenefit = _benefitOfAllMonths.div(2);
-    //     require( token.transfer(msg.sender, _halfBenefit) );
-    //
-    //     launchReward[msg.sender] = launchReward[msg.sender].add(_halfBenefit);
-    // }
+    function withdrawBenefitOfAStakingByMonths(
+        uint256 _stakingId,
+        uint256[] memory _months
+    ) public {
+        uint256 _benefitOfAllMonths;
+        for(uint256 i = 0; i < _months.length; i++) {
+            require(
+              isStakingActive(msg.sender, _stakingId, _months[i])
+              && !stakings[msg.sender][_stakingId].isMonthClaimed[_months[i]]
+              // , 'staking must be active'
+            );
+            uint256 _benefit = stakings[msg.sender][_stakingId].exaEsAmount
+                              .mul(timeAllyMonthlyNRT[ _months[i] ])
+                              .div(totalActiveStakings[ _months[i] ]);
+
+            _benefitOfAllMonths = _benefitOfAllMonths.add(_benefit);
+            stakings[msg.sender][_stakingId].isMonthClaimed[_months[i]] = true;
+        }
+
+        uint256 _luckPool = _benefitOfAllMonths
+                        .mul( uint256(15).sub(stakingPlans[stakings[msg.sender][_stakingId].stakingPlanId].fractionFrom15) )
+                        .div( 15 );
+
+        require( token.transfer(address(nrtManager), _luckPool) );
+        require( nrtManager.UpdateLuckpool(_luckPool) );
+
+        _benefitOfAllMonths = _benefitOfAllMonths.sub(_luckPool);
+
+        uint256 _halfBenefit = _benefitOfAllMonths.div(2);
+        require( token.transfer(msg.sender, _halfBenefit) );
+
+        launchReward[msg.sender] = launchReward[msg.sender].add(_halfBenefit);
+    }
 
 
     // function restakeAccrued(uint256 _stakingId, uint256 _stakingPlanId) public {
