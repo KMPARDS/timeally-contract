@@ -264,7 +264,7 @@ describe('first month in TimeAlly', async() => {
     const currentMonth = await timeAllyInstance[0].getCurrentMonth();
     const benefit = await timeAllyInstance[0].functions.seeShareForUserByMonth(
       accounts[1],
-      // [0],
+      [0],
       currentMonth);
     // console.log(0); // 0
     assert.ok(benefit.gt(0));
@@ -280,7 +280,7 @@ describe('first month in TimeAlly', async() => {
       const currentMonth = await timeAllyInstance[0].getCurrentMonth();
       const benefit = await timeAllyInstance[0].functions.seeShareForUserByMonth(
         accounts[accountId],
-        // [0],
+        [0],
         currentMonth);
       if(benefit) console.log(`account ${accountId} benefit ${ethers.utils.formatEther(benefit)} ES`);
       assert.ok(benefit.eq(0));
@@ -294,7 +294,7 @@ describe('first month in TimeAlly', async() => {
       // for(let i = 0; i < numberOfStakings; i++) stakingIdsArray.push(i);
       try {
         const tx = await timeAllyInstance[accountId].functions
-          .withdrawShareForUserByMonth(currentMonth, 50);
+          .withdrawShareForUserByMonth([0], currentMonth, 50);
         await tx.wait();
         assert(false, 'should get error');
       } catch (e) {
@@ -314,7 +314,7 @@ describe('first month in TimeAlly', async() => {
       const currentMonth = await timeAllyInstance[0].getCurrentMonth();
       const benefit = await timeAllyInstance[0].functions.seeShareForUserByMonth(
         accounts[accountId],
-        // [0],
+        [0],
         currentMonth);
       assert.ok(benefit.gt(0));
     });
@@ -329,7 +329,7 @@ describe('first month in TimeAlly', async() => {
       // for(let i = 0; i < numberOfStakings; i++) stakingIdsArray.push(i);
       // console.log('staking array', stakingIdsArray);
       const tx = await timeAllyInstance[accountId].functions
-          .withdrawShareForUserByMonth(currentMonth, 50);
+          .withdrawShareForUserByMonth([0], currentMonth, 50);
       //await tx.wait();
 
       const newBalance = await eraSwapInstance[0].functions.balanceOf(accounts[accountId]);
@@ -391,6 +391,7 @@ describe('first month in TimeAlly', async() => {
         const currentMonth = await timeAllyInstance[0].getCurrentMonth();
         const benefit = await timeAllyInstance[0].functions.seeShareForUserByMonth(
           accounts[accountId],
+          [0],
           currentMonth);
         //if(element[3]) {
           //element.push(benefit);
@@ -414,6 +415,7 @@ describe('first month in TimeAlly', async() => {
 
         const currentMonth = await timeAllyInstance[0].getCurrentMonth();
         await timeAllyInstance[accountId].functions.withdrawShareForUserByMonth(
+          [0],
           currentMonth,
           50
         );
@@ -467,7 +469,7 @@ describe('Withdrawing past benefit', async() => {
     const balanceOfTimeAllyOld = await eraSwapInstance[0].functions.balanceOf(timeAllyInstance[0].address);
 
     const month = 1;
-    await timeAllyInstance[1].functions.withdrawShareForUserByMonth(month, 50);
+    await timeAllyInstance[1].functions.withdrawShareForUserByMonth([0], month, 50);
 
     const balanceNew = await eraSwapInstance[0].functions.balanceOf(accounts[1]);
     const balanceOfTimeAllyNew = await eraSwapInstance[0].functions.balanceOf(timeAllyInstance[0].address);

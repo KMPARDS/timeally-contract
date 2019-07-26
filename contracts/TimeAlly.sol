@@ -356,7 +356,7 @@ contract TimeAlly {
 
     function seeShareForUserByMonth(
       address _userAddress
-      // , uint256[] memory _stakingIds
+      , uint256[] memory _stakingIds
       , uint256 _atMonth) public view returns (uint256) {
         // calculate user's active stakings amount for this month
         // divide by total active stakings to get the fraction.
@@ -373,14 +373,14 @@ contract TimeAlly {
 
         uint256 userActiveStakingsExaEsAmount;
 
-        for(uint256 i = 0; i < stakings[_userAddress].length; i++) {
-            StakingPlan memory plan = stakingPlans[ stakings[_userAddress][i].stakingPlanId ];
+        for(uint256 i = 0; i < _stakingIds.length; i++) {
+            StakingPlan memory plan = stakingPlans[ stakings[_userAddress][_stakingIds[i]].stakingPlanId ];
 
             // user staking should be active for it to be considered
-            if(isStakingActive(_userAddress, i, _atMonth)
-              && !stakings[_userAddress][i].isMonthClaimed[_atMonth]) {
+            if(isStakingActive(_userAddress, _stakingIds[i], _atMonth)
+              && !stakings[_userAddress][_stakingIds[i]].isMonthClaimed[_atMonth]) {
                 userActiveStakingsExaEsAmount = userActiveStakingsExaEsAmount.add(
-                  stakings[_userAddress][i].exaEsAmount
+                  stakings[_userAddress][_stakingIds[i]].exaEsAmount
                     .mul(plan.fractionFrom15)
                     .div(15)
                 );
@@ -391,9 +391,10 @@ contract TimeAlly {
     }
 
     function withdrawShareForUserByMonth(
-      uint256 _atMonth
-      // , uint256[] memory _stakingIds
-      , uint256 _accruedPercentage) public {
+      uint256[] memory _stakingIds
+      , uint256 _atMonth
+      , uint256 _accruedPercentage
+    ) public {
         uint256 _currentMonth = getCurrentMonth();
 
         require(_currentMonth >= _atMonth
@@ -413,19 +414,19 @@ contract TimeAlly {
         uint256 _userTotalEffectiveStakings;
         uint256 _userTotalActiveStakings;
 
-        for(uint256 i = 0; i < stakings[msg.sender].length; i++) {
-            StakingPlan memory _plan = stakingPlans[ stakings[msg.sender][i].stakingPlanId ];
+        for(uint256 i = 0; i < _stakingIds.length; i++) {
+            StakingPlan memory _plan = stakingPlans[ stakings[msg.sender][_stakingIds[i]].stakingPlanId ];
 
             // user staking should be active for it to be considered
-            if(isStakingActive(msg.sender, i, _atMonth)
-              && !stakings[msg.sender][i].isMonthClaimed[_atMonth]) {
+            if(isStakingActive(msg.sender, _stakingIds[i], _atMonth)
+              && !stakings[msg.sender][_stakingIds[i]].isMonthClaimed[_atMonth]) {
 
                 // marking user as claimed
-                stakings[msg.sender][i].isMonthClaimed[_atMonth] = true;
+                stakings[msg.sender][_stakingIds[i]].isMonthClaimed[_atMonth] = true;
 
-                _userTotalActiveStakings = _userTotalActiveStakings.add(stakings[msg.sender][i].exaEsAmount);
+                _userTotalActiveStakings = _userTotalActiveStakings.add(stakings[msg.sender][_stakingIds[i]].exaEsAmount);
 
-                uint256 _effectiveAmount = stakings[msg.sender][i].exaEsAmount
+                uint256 _effectiveAmount = stakings[msg.sender][_stakingIds[i]].exaEsAmount
                   .mul(_plan.fractionFrom15).div(15);
                 _userTotalEffectiveStakings = _userTotalEffectiveStakings.add(_effectiveAmount);
 
