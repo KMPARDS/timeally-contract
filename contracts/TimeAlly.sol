@@ -53,7 +53,7 @@ contract TimeAlly {
         uint256 exaEsAmount;
         uint256 timestamp;
         uint256 loanPlanId;
-        uint256 status;
+        uint256 status; // @dev 1 => not repayed yet; 2 => repayed
         uint256[] stakingIds;
     }
 
@@ -317,11 +317,11 @@ contract TimeAlly {
         emit NewStaking(msg.sender, _stakingPlanId, reward, stakings[msg.sender].length - 1);
     }
 
-    /// @notice this function is used to read the NRT array to display data
-    /// @return the TimeAlly `NRT array
-    function timeAllyMonthlyNRTArray() public view returns (uint256[] memory) {
-        return timeAllyMonthlyNRT;
-    }
+    // /// @notice this function is used to read the NRT array to display data
+    // /// @return the TimeAlly `NRT array
+    // function timeAllyMonthlyNRTArray() public view returns (uint256[] memory) {
+    //     return timeAllyMonthlyNRT;
+    // }
 
     /// @notice used internally to see if staking is active or not. does not include if staking is claimed.
     /// @param _userAddress - address of user
@@ -345,7 +345,7 @@ contract TimeAlly {
             /// @dev staking should have active status
             && stakings[_userAddress][_stakingId].status == 1
 
-            /// @dev if _atMonth is _currentMonth, then withdrawal should be allowed only after 30 days interval since staking
+            /// @dev if _atMonth is current Month, then withdrawal should be allowed only after 30 days interval since staking
             && (
               getCurrentMonth() != _atMonth
               || token.mou() >= stakings[_userAddress][_stakingId].timestamp
@@ -362,33 +362,33 @@ contract TimeAlly {
     /// @param _userAddress - address of any user
     /// @param _atMonth - month at which total active stakings need to be known
     /// @return total active stakings of a user
-    function userActiveStakingByMonth(address _userAddress, uint256 _atMonth) public view returns (uint256) {
-        // calculate user's active stakings amount for this month
-        // divide by total active stakings to get the fraction.
-        // multiply by the total timeally NRT to get the share and send it to user
-
-        uint256 _currentMonth = getCurrentMonth();
-        require(_currentMonth >= _atMonth
-          // , 'cannot see future stakings'
-        );
-
-        uint256 userActiveStakingsExaEsAmount;
-
-        for(uint256 i = 0; i < stakings[_userAddress].length; i++) {
-
-            // user staking should be active for it to be considered
-            if(isStakingActive(_userAddress, i, _atMonth)) {
-                userActiveStakingsExaEsAmount = userActiveStakingsExaEsAmount
-                    .add(
-                      stakings[_userAddress][i].exaEsAmount
-                      // .mul(stakingPlans[ stakings[_userAddress][i].stakingPlanId ].fractionFrom15)
-                      // .div(15)
-                    );
-            }
-        }
-
-        return userActiveStakingsExaEsAmount;
-    }
+    // function userActiveStakingByMonth(address _userAddress, uint256 _atMonth) public view returns (uint256) {
+    //     // calculate user's active stakings amount for this month
+    //     // divide by total active stakings to get the fraction.
+    //     // multiply by the total timeally NRT to get the share and send it to user
+    //
+    //     uint256 _currentMonth = getCurrentMonth();
+    //     require(_currentMonth >= _atMonth
+    //       // , 'cannot see future stakings'
+    //     );
+    //
+    //     uint256 userActiveStakingsExaEsAmount;
+    //
+    //     for(uint256 i = 0; i < stakings[_userAddress].length; i++) {
+    //
+    //         // user staking should be active for it to be considered
+    //         if(isStakingActive(_userAddress, i, _atMonth)) {
+    //             userActiveStakingsExaEsAmount = userActiveStakingsExaEsAmount
+    //                 .add(
+    //                   stakings[_userAddress][i].exaEsAmount
+    //                   // .mul(stakingPlans[ stakings[_userAddress][i].stakingPlanId ].fractionFrom15)
+    //                   // .div(15)
+    //                 );
+    //         }
+    //     }
+    //
+    //     return userActiveStakingsExaEsAmount;
+    // }
 
 
     // function seeShareForUserByMonth(
@@ -782,7 +782,39 @@ contract TimeAlly {
                 totalActiveStakings[j] = totalActiveStakings[j].add(stakings[msg.sender][_stakingId].exaEsAmount);
             }
         }
+        // add repay event
+    }
 
+    function burnDefaultedLoans(address[] memory _addressArray, uint256[] memory _loanIdArray) public {
+        uint256 _amountToBurn;
+        for(uint256 i = 0; i < _addressArray.length; i++) {
+            require(
+                loans[ _addressArray[i] ][ _loanIdArray[i] ].status == 1
+                // , 'loan should not be repayed'
+            );
+            require(
+                token.mou() >
+                loans[ _addressArray[i] ][ _loanIdArray[i] ].timestamp
+                + loanPlans[ loans[ _addressArray[i] ][ _loanIdArray[i] ].loanPlanId ].loanMonths.mul(earthSecondsInMonth)
+                // , 'loan should have crossed its loan period'
+            );
+            uint256[] storage _stakingIdsOfLoan = loans[ _addressArray[i] ][ _loanIdArray[i] ].stakingIds;
+
+            /// @dev add staking amounts of all stakings on which loan is taken
+            for(uint256 j = 0; j < _stakingIdsOfLoan.length; j++) {
+                _amountToBurn = _amountToBurn.add(
+                    stakings[ _addressArray[i] ][ _stakingIdsOfLoan[j] ].exaEsAmount
+                );
+            }
+            /// @dev sub loan amount
+            _amountToBurn = _amountToBurn.sub(
+                loans[ _addressArray[i] ][ _loanIdArray[i] ].exaEsAmount
+            );
+        }
+        require(token.transfer(address(nrtManager), _amountToBurn));
+        require(nrtManager.UpdateBurnBal(_amountToBurn));
+
+        // emit event
     }
 
     /// @notice this function is used to add nominee to a staking
@@ -811,25 +843,25 @@ contract TimeAlly {
         return stakings[_userAddress][_stakingId].nomination[_nomineeAddress];
     }
 
-    /// @notice this function is used to update nomination of a nominee of sender's staking
-    /// @param _stakingId - staking id
-    /// @param _nomineeAddress - address of nominee
-    /// @param _shares - shares to be updated for the nominee
-    function updateNominee(uint256 _stakingId, address _nomineeAddress, uint256 _shares) public {
-        require(stakings[msg.sender][_stakingId].status == 1
-          // , 'staking should active'
-        );
-        uint256 _oldShares = stakings[msg.sender][_stakingId].nomination[_nomineeAddress];
-        if(_shares > _oldShares) {
-            uint256 _diff = _shares.sub(_oldShares);
-            stakings[msg.sender][_stakingId].totalNominationShares = stakings[msg.sender][_stakingId].totalNominationShares.add(_diff);
-            stakings[msg.sender][_stakingId].nomination[_nomineeAddress] = stakings[msg.sender][_stakingId].nomination[_nomineeAddress].add(_diff);
-        } else if(_shares < _oldShares) {
-          uint256 _diff = _oldShares.sub(_shares);
-            stakings[msg.sender][_stakingId].nomination[_nomineeAddress] = stakings[msg.sender][_stakingId].nomination[_nomineeAddress].sub(_diff);
-            stakings[msg.sender][_stakingId].totalNominationShares = stakings[msg.sender][_stakingId].totalNominationShares.sub(_diff);
-        }
-    }
+    // /// @notice this function is used to update nomination of a nominee of sender's staking
+    // /// @param _stakingId - staking id
+    // /// @param _nomineeAddress - address of nominee
+    // /// @param _shares - shares to be updated for the nominee
+    // function updateNominee(uint256 _stakingId, address _nomineeAddress, uint256 _shares) public {
+    //     require(stakings[msg.sender][_stakingId].status == 1
+    //       // , 'staking should active'
+    //     );
+    //     uint256 _oldShares = stakings[msg.sender][_stakingId].nomination[_nomineeAddress];
+    //     if(_shares > _oldShares) {
+    //         uint256 _diff = _shares.sub(_oldShares);
+    //         stakings[msg.sender][_stakingId].totalNominationShares = stakings[msg.sender][_stakingId].totalNominationShares.add(_diff);
+    //         stakings[msg.sender][_stakingId].nomination[_nomineeAddress] = stakings[msg.sender][_stakingId].nomination[_nomineeAddress].add(_diff);
+    //     } else if(_shares < _oldShares) {
+    //       uint256 _diff = _oldShares.sub(_shares);
+    //         stakings[msg.sender][_stakingId].nomination[_nomineeAddress] = stakings[msg.sender][_stakingId].nomination[_nomineeAddress].sub(_diff);
+    //         stakings[msg.sender][_stakingId].totalNominationShares = stakings[msg.sender][_stakingId].totalNominationShares.sub(_diff);
+    //     }
+    // }
 
     /// @notice this function is used to remove nomination of a address
     /// @param _stakingId - staking id

@@ -617,6 +617,15 @@ describe('Loan', async() => {
       assert.ok(err.message.includes('revert'));
     }
   });
+
+  it('any person can complain about a loan defaulter with defaulter address and loan id and his remaining staking (exclusive of loan amount) will be sent for burning', async() => {
+    const oldNRTBalance = await eraSwapInstance[0].functions.balanceOf(nrtManagerInstance[0].address);
+    await timeAllyInstance[0].functions.burnDefaultedLoans([accounts[5]], [0]);
+    const newNRTBalance = await eraSwapInstance[0].functions.balanceOf(nrtManagerInstance[0].address);
+
+    console.log('sent to NRT for burining', ethers.utils.formatEther(newNRTBalance.sub(oldNRTBalance)));
+    assert.ok(newNRTBalance.sub(oldNRTBalance).eq(ethers.utils.parseEther('6000')));
+  });
 });
 
 describe('Withdrawing past benefit', async() => {
