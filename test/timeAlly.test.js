@@ -483,7 +483,7 @@ describe('first month in TimeAlly', async() => {
 
 describe('Loan', async() => {
   it('creating a loan plan of 1%', async() => {
-    await timeAllyInstance[0].functions.createLoanPlan(2, 1);
+    await timeAllyInstance[0].functions.createLoanPlan(2, 1, 50);
 
     const loanPlan = await timeAllyInstance[0].functions.loanPlans(0);
     //console.log(loanPlan);
@@ -501,7 +501,7 @@ describe('Loan', async() => {
     // }
 
     const amountCanBeLoaned = await timeAllyInstance[0]
-      .seeMaxLoaningAmountOnUserStakings(accounts[1], [0]);
+      .seeMaxLoaningAmountOnUserStakings(accounts[1], [0], 0);
 
     console.log("\x1b[2m", '\n\tmax amount can be loaned', ethers.utils.formatEther(amountCanBeLoaned), 'ES');
     assert.ok(
@@ -520,7 +520,7 @@ describe('Loan', async() => {
     // }
 
     const amountCanBeLoaned = await timeAllyInstance[0]
-      .seeMaxLoaningAmountOnUserStakings(accounts[3], [0]);
+      .seeMaxLoaningAmountOnUserStakings(accounts[3], [0], 0);
 
     console.log("\x1b[2m", '\n\tmax amount can be loaned', ethers.utils.formatEther(amountCanBeLoaned), 'ES');
     assert.ok(
@@ -563,7 +563,7 @@ describe('Loan', async() => {
 
   it('account 5 tries to see how much loan he/she can take from his loan active staking sees something as max loan possible', async() => {
     const amountCanBeLoaned = await timeAllyInstance[0]
-      .seeMaxLoaningAmountOnUserStakings(accounts[5], [0]);
+      .seeMaxLoaningAmountOnUserStakings(accounts[5], [0], 0);
 
     console.log("\x1b[2m", '\n\tmax amount can be loaned', ethers.utils.formatEther(amountCanBeLoaned), 'ES');
     assert.ok(
@@ -626,6 +626,25 @@ describe('Loan', async() => {
     console.log('sent to NRT for burining', ethers.utils.formatEther(newNRTBalance.sub(oldNRTBalance)));
     assert.ok(newNRTBalance.sub(oldNRTBalance).eq(ethers.utils.parseEther('6000')));
   });
+
+  it('time travelling to the future by 1 months using mou() time machine && invoking monthly NRT and checking total supply', async() => {
+    const currentTime = await eraSwapInstance[0].mou();
+    const depth = 30.5 * 24 * 60 * 60;
+    await eraSwapInstance[0].goToFuture(depth);
+    const currentTimeAfterComingOutFromTimeMachine = await eraSwapInstance[0].mou();
+
+    assert.ok(
+      currentTimeAfterComingOutFromTimeMachine.sub(currentTime).gte(depth),
+      'time travel should happen successfully'
+    );
+
+    const oldTotalSupply = await eraSwapInstance[0].functions.totalSupply();
+    await nrtManagerInstance[0].MonthlyNRTRelease();
+    const newTotalSupply = await eraSwapInstance[0].functions.totalSupply();
+
+    console.log('oldTotalSupply', ethers.utils.formatEther(oldTotalSupply));
+    console.log('newTotalSupply', ethers.utils.formatEther(newTotalSupply));
+  });
 });
 
 describe('Withdrawing past benefit', async() => {
@@ -671,6 +690,8 @@ describe('Withdrawing past benefit', async() => {
       || balanceOfTimeAllyOld.sub(balanceOfTimeAllyNew).sub(1).eq(benefit.div(2))
       , 'timeally balance should decrease by that amount');
   });
+
+  // it('account 1 tries to withdraw before his period');
 });
 
 describe('Nominee', async() => {

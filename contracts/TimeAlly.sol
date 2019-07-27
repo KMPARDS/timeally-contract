@@ -26,7 +26,7 @@ final the earthSecondsInMonth amount in TimeAlly as well in NRT
 
 /// @author The EraSwap Team
 /// @title TimeAlly Smart Contract
-/// @dev all require statement
+/// @dev all require statement message strings are commented to make contract deployable by lower the deploying gas fee
 contract TimeAlly {
     using SafeMath for uint256;
 
@@ -45,8 +45,8 @@ contract TimeAlly {
     struct StakingPlan {
         uint256 months;
         uint256 fractionFrom15; /// @dev fraction of NRT released. Alotted to TimeAlly is 15% of NRT
-        bool isPlanActive; /// @dev when plan is inactive, new stakings must not be able to select this plan. Old stakings which already selected this plan will continue themselves as per plan.
-        bool isLoanAllowed;
+        // bool isPlanActive; /// @dev when plan is inactive, new stakings must not be able to select this plan. Old stakings which already selected this plan will continue themselves as per plan.
+        bool isUrgentLoanAllowed; /// @dev if urgent loan is not allowed then staker can take loan only after 75% (hard coded) of staking months
     }
 
     struct Loan {
@@ -59,7 +59,8 @@ contract TimeAlly {
 
     struct LoanPlan {
         uint256 loanMonths;
-        uint256 loanRate;
+        uint256 loanRate; // @dev amount of charge to pay, this will be sent to luck pool
+        uint256 loanAmountPercent; /// @dev max loan user can take depends on this percent of the plan and the stakings user wishes to put for the loan
     }
 
     uint256 deployedTimestamp;
@@ -170,31 +171,32 @@ contract TimeAlly {
     /// @notice this function is used by owner to create plans for new stakings
     /// @param _months - is number of staking months of a plan. for eg. 12 months
     /// @param _fractionFrom15 - NRT fraction (max 15%) benefit to be given to user. rest is sent back to NRT in Luck Pool
-    /// @param _isLoanAllowed - Specifies whether loan can be taken on stakings with this plan
-    function createStakingPlan(uint256 _months, uint256 _fractionFrom15, bool _isLoanAllowed) public onlyOwner {
+    /// @param _isUrgentLoanAllowed - if urgent loan is not allowed then staker can take loan only after 75% of time elapsed
+    function createStakingPlan(uint256 _months, uint256 _fractionFrom15, bool _isUrgentLoanAllowed) public onlyOwner {
         stakingPlans.push(StakingPlan({
             months: _months,
             fractionFrom15: _fractionFrom15,
-            isPlanActive: true,
-            isLoanAllowed: _isLoanAllowed
+            // isPlanActive: true,
+            isUrgentLoanAllowed: _isUrgentLoanAllowed
         }));
     }
 
     /// @notice this function is used by owner to create plans for new loans
     /// @param _loanMonths - number of months or duration of loan, loan taker must repay the loan before this period
     /// @param _loanRate - this is total % of loaning amount charged while taking loan, this charge is sent to luckpool in NRT manager which ends up distributed back to the community again
-    function createLoanPlan(uint256 _loanMonths, uint256 _loanRate) public onlyOwner {
+    function createLoanPlan(uint256 _loanMonths, uint256 _loanRate, uint256 _loanAmountPercent) public onlyOwner {
         loanPlans.push(LoanPlan({
             loanMonths: _loanMonths,
-            loanRate: _loanRate
+            loanRate: _loanRate,
+            loanAmountPercent: _loanAmountPercent
         }));
     }
 
-    /// @notice this function is used by owner to deactivate a existing staking plan or activate a deactivated staking plan for new stakings. Deactivating a staking plan does not affect existing stakings with that plan.
-    /// @param _stakingPlanId - the plan which is needed to be activated or deactivated
-    function toggleStakingPlan(uint256 _stakingPlanId) public onlyOwner {
-        stakingPlans[_stakingPlanId].isPlanActive = !stakingPlans[_stakingPlanId].isPlanActive;
-    }
+    // /// @notice this function is used by owner to deactivate a existing staking plan or activate a deactivated staking plan for new stakings. Deactivating a staking plan does not affect existing stakings with that plan.
+    // /// @param _stakingPlanId - the plan which is needed to be activated or deactivated
+    // function toggleStakingPlan(uint256 _stakingPlanId) public onlyOwner {
+    //     stakingPlans[_stakingPlanId].isPlanActive = !stakingPlans[_stakingPlanId].isPlanActive;
+    // }
 
     /// @notice takes ES from user and locks it for a time according to plan selected by user
     /// @param _exaEsAmount - amount of ES tokens (in 18 decimals thats why 'exa') that user wishes to stake
@@ -206,9 +208,9 @@ contract TimeAlly {
             // , 'staking amount should be non zero'
         );
 
-        require(stakingPlans[_stakingPlanId].isPlanActive
-            // , 'selected plan is not active'
-        );
+        // require(stakingPlans[_stakingPlanId].isPlanActive
+        //     // , 'selected plan is not active'
+        // );
 
         require(token.transferFrom(msg.sender, address(this), _exaEsAmount)
           // , 'could not transfer tokens'
@@ -282,9 +284,9 @@ contract TimeAlly {
     /// @notice this function is used by rewardees to claim their accrued rewards. This is also used by stakers to restake their 50% benefit received as rewards
     /// @param _stakingPlanId - rewardee can choose plan while claiming rewards as stakings
     function claimLaunchReward(uint256 _stakingPlanId) public {
-        require(stakingPlans[_stakingPlanId].isPlanActive
-            // , 'selected plan is not active'
-        );
+        // require(stakingPlans[_stakingPlanId].isPlanActive
+        //     // , 'selected plan is not active'
+        // );
 
         require(launchReward[msg.sender] > 0
             // , 'launch reward should be non zero'
@@ -656,8 +658,9 @@ contract TimeAlly {
     /// @notice this function is used to estimate the maximum amount of loan that any user can take with their stakings
     /// @param _userAddress - address of user
     /// @param _stakingIds - array of staking ids which should be used to estimate max loan amount
+    /// @param _loanId - the loan id of plan user wishes to take loan.
     /// @return max loaning amount
-    function seeMaxLoaningAmountOnUserStakings(address _userAddress, uint256[] memory _stakingIds) public view returns (uint256) {
+    function seeMaxLoaningAmountOnUserStakings(address _userAddress, uint256[] memory _stakingIds, uint256 _loanId) public view returns (uint256) {
         uint256 _currentMonth = getCurrentMonth();
         //require(_currentMonth >= _atMonth, 'cannot see future stakings');
 
@@ -666,11 +669,17 @@ contract TimeAlly {
         for(uint256 i = 0; i < _stakingIds.length; i++) {
 
             if(isStakingActive(_userAddress, _stakingIds[i], _currentMonth)
-              && stakingPlans[ stakings[_userAddress][_stakingIds[i]].stakingPlanId ].isLoanAllowed
+                && (
+                  // @dev if urgent loan is not allowed then loan can be taken only after staking period is completed 75%
+                  stakingPlans[ stakings[_userAddress][_stakingIds[i]].stakingPlanId ].isUrgentLoanAllowed
+                  || token.mou() > stakings[_userAddress][_stakingIds[i]].timestamp + stakingPlans[ stakings[_userAddress][_stakingIds[i]].stakingPlanId ].months.mul(earthSecondsInMonth).mul(75).div(100)
+                )
               // && !stakings[_userAddress][_stakingIds[i]].isMonthClaimed[_currentMonth]
             ) {
                 userStakingsExaEsAmount = userStakingsExaEsAmount
                     .add(stakings[_userAddress][_stakingIds[i]].exaEsAmount
+                      .mul(loanPlans[_loanId].loanAmountPercent)
+                      .div(100)
                       // .mul(stakingPlans[ stakings[_userAddress][_stakingIds[i]].stakingPlanId ].fractionFrom15)
                       // .div(15)
                     );
@@ -693,7 +702,11 @@ contract TimeAlly {
         for(uint256 i = 0; i < _stakingIds.length; i++) {
 
             if( isStakingActive(msg.sender, _stakingIds[i], _currentMonth)
-                && stakingPlans[ stakings[msg.sender][_stakingIds[i]].stakingPlanId ].isLoanAllowed
+                && (
+                  // @dev if urgent loan is not allowed then loan can be taken only after staking period is completed 75%
+                  stakingPlans[ stakings[msg.sender][_stakingIds[i]].stakingPlanId ].isUrgentLoanAllowed
+                  || token.mou() > stakings[msg.sender][_stakingIds[i]].timestamp + stakingPlans[ stakings[msg.sender][_stakingIds[i]].stakingPlanId ].months.mul(earthSecondsInMonth).mul(75).div(100)
+                )
             ) {
 
                 // @dev store sum in a number
