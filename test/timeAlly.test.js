@@ -22,10 +22,10 @@ let accounts
 // ];
 
 const testCases = [
-  [1, '10000', 1],
-  [2, '10000', 0],
-  [3, '10000', 2],
-  [4, '470000000', 0],
+  [1, '50000000', 1],
+  [2, '500000000', 0],
+  [3, '250000000', 2],
+  [4, '80000000', 0],
   [5, '12000', 2],
   //[4, '12000', 0] // the last one is staked after 10 days
 ];
@@ -236,6 +236,8 @@ describe('Staking', async() => {
 
 describe('first month in TimeAlly', async() => {
   it('time travelling to the future by 1 month and half day using mou() time machine', async() => {
+    console.log(await timeAllyInstance[0].functions.stakings(accounts[1],0));
+
     const currentTime = await eraSwapInstance[0].mou();
     const depth = 30.5 * 24 * 60 * 60;
     await eraSwapInstance[0].goToFuture(depth);
@@ -337,7 +339,7 @@ describe('first month in TimeAlly', async() => {
 
     it(`account ${accountId} tries to withdraw his/her benefit should get some balance now`, async() => {
       const oldBalance = await eraSwapInstance[0].functions.balanceOf(accounts[accountId]);
-
+      const oldNRTBalance = await eraSwapInstance[0].functions.balanceOf(nrtManagerInstance[0].address);
       const currentMonth = await timeAllyInstance[0].getCurrentMonth();
       // const numberOfStakings = await timeAllyInstance[0].functions
       //   .getNumberOfStakingsByUser(accounts[1]);
@@ -349,19 +351,20 @@ describe('first month in TimeAlly', async() => {
       //await tx.wait();
 
       const newBalance = await eraSwapInstance[0].functions.balanceOf(accounts[accountId]);
-
+      const newNRTBalance = await eraSwapInstance[0].functions.balanceOf(nrtManagerInstance[0].address);
       console.log(`liquid transfered to account ${accountId}:`, ethers.utils.formatEther(newBalance.sub(oldBalance)));
+      console.log('NRT received:', ethers.utils.formatEther(newNRTBalance.sub(oldNRTBalance)), 'ES');
       assert.ok(newBalance.sub(oldBalance).gt(0));
       // if(benefit) console.log(`account ${accountId} benefit ${ethers.utils.formatEther(benefit)} ES`);
       // assert.ok(benefit.eq(0));
     });
 
-    if(accountId !== 1) {
-      it(`NRT receives ES in Luck Pool`, async() => {
-        const oldBalance = await eraSwapInstance[0].functions.balanceOf(nrtManagerInstance[0].address);
-        console.log('NRT received:', ethers.utils.formatEther(oldBalance), 'ES');
-      });
-    }
+    // if(accountId !== 1) {
+    //   it(`NRT receives ES in Luck Pool`, async() => {
+    //     const oldBalance = await eraSwapInstance[0].functions.balanceOf(nrtManagerInstance[0].address);
+    //     console.log('NRT received:', ethers.utils.formatEther(oldBalance), 'ES');
+    //   });
+    // }
 
   })(testCases[testCases.length - 1][0]);
 });
@@ -694,7 +697,7 @@ describe('Nominee', async() => {
       await timeAllyInstance[3].functions.nomineeWithdraw(accounts[2], 0);
       assert(false, 'account 3 should not be able to withdraw before 1 year past of end of period of the  staking');
     } catch (e) {
-      console.log(e.message);
+      //console.log(e.message);
       assert(e.message.includes('revert'));
     }
   });
