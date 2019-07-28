@@ -95,7 +95,7 @@ let tx
   console.log(`Done! Hash: ${tx.hash}`);
 
   console.log('\nCreating Loan Plan of 2 months / 1%...');
-  tx = await timeAllyInstance.functions.createLoanPlan(2, 1);
+  tx = await timeAllyInstance.functions.createLoanPlan(2, 1, 50);
   await tx.wait();
   console.log(`Done! Hash: ${tx.hash}`);
 

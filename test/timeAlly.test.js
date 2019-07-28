@@ -289,7 +289,7 @@ describe('first month in TimeAlly', async() => {
     //   await eraSwapInstance[0].goToPast(depth);
     // });
 
-    it(`account ${accountId} tries to see his/her benefit but gets 0 as he/she staked 10 days later`, async() => {
+    it(`account ${accountId} tries to see his/her benefit but gets error as he/she staked 10 days later`, async() => {
       const currentMonth = await timeAllyInstance[0].getCurrentMonth();
       let benefit;
       try {
@@ -297,6 +297,7 @@ describe('first month in TimeAlly', async() => {
           accounts[accountId],
           0, // staking id
           [currentMonth]);
+        console.log('benefit',benefit);
         assert(false, 'should get error')
       } catch (err) {
         assert.ok(err.message.includes('revert'), 'should get error');
