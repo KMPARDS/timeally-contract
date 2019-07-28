@@ -65,13 +65,13 @@ contract TimeAlly {
         uint256 maxLoanAmountPercent; /// @dev max loan user can take depends on this percent of the plan and the stakings user wishes to put for the loan
     }
 
-    uint256 deployedTimestamp;
+    uint256 public deployedTimestamp;
     address public owner;
     Eraswap public token;
     NRTManager public nrtManager;
 
     /// @dev 1 Year = 365.242 days for taking care of leap years
-    uint256 earthSecondsInMonth = 2629744;
+    uint256 public earthSecondsInMonth = 2629744;
     // uint256 earthSecondsInMonth = 30 * 12 * 60 * 60; /// @dev there was a decision for following 360 day year
 
     StakingPlan[] public stakingPlans;
@@ -255,15 +255,15 @@ contract TimeAlly {
         launchReward[msg.sender] = launchReward[msg.sender].add(_exaEsAmount);
     }
 
-    // /// @notice this function is used to send rewards to multiple users
-    // /// @param _addresses - array of address to send rewards
-    // /// @param _exaEsAmountArray - array of ExaES amounts sent to each address of _addresses with same index
-    // function giveLaunchReward(address[] memory _addresses, uint256[] memory _exaEsAmountArray) public onlyOwner {
-    //     for(uint256 i = 0; i < _addresses.length; i++) {
-    //         launchReward[msg.sender] = launchReward[msg.sender].sub(_exaEsAmountArray[i]);
-    //         launchReward[_addresses[i]] = launchReward[_addresses[i]].add(_exaEsAmountArray[i]);
-    //     }
-    // }
+    /// @notice this function is used to send rewards to multiple users
+    /// @param _addresses - array of address to send rewards
+    /// @param _exaEsAmountArray - array of ExaES amounts sent to each address of _addresses with same index
+    function giveLaunchReward(address[] memory _addresses, uint256[] memory _exaEsAmountArray) public onlyOwner {
+        for(uint256 i = 0; i < _addresses.length; i++) {
+            launchReward[msg.sender] = launchReward[msg.sender].sub(_exaEsAmountArray[i]);
+            launchReward[_addresses[i]] = launchReward[_addresses[i]].add(_exaEsAmountArray[i]);
+        }
+    }
 
     /// @notice this function is used by rewardees to claim their accrued rewards. This is also used by stakers to restake their 50% benefit received as rewards
     /// @param _stakingPlanId - rewardee can choose plan while claiming rewards as stakings
