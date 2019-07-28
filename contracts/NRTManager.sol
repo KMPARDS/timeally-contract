@@ -19,14 +19,14 @@ contract NRTManager {
     //Eraswap public eraswapToken;
 
     // different pool address
-    address public newTalentsAndPartnerships;
-    address public platformMaintenance;
-    address public marketingAndRNR;
-    address public kmPards;
-    address public contingencyFunds;
-    address public researchAndDevelopment;
-    address public powerToken;
-    address public timeSwappers;                 // which include powerToken , curators ,timeTraders , daySwappers
+    address public newTalentsAndPartnerships = 0xb4024468D052B36b6904a47541dDE69E44594607;
+    address public platformMaintenance = 0x922a2d6B0B2A24779B0623452AdB28233B456D9c;
+    address public marketingAndRNR = 0xDFBC0aE48f3DAb5b0A1B154849Ee963430AA0c3E;
+    address public kmPards = 0x4881964ac9AD9480585425716A8708f0EE66DA88;
+    address public contingencyFunds = 0xF4E731a107D7FFb2785f696543dE8BF6EB558167;
+    address public researchAndDevelopment = 0xb209B4cec04cE9C0E1Fa741dE0a8566bf70aDbe9;
+    address public powerToken = 0xbc24BfAC401860ce536aeF9dE10EF0104b09f657;
+    address public timeSwappers = 0x4b65109E11CF0Ff8fA58A7122a5E84e397C6Ceb8;                 // which include powerToken , curators ,timeTraders , daySwappers
     address public timeAlly;                     //address of timeAlly Contract
 
 
@@ -194,7 +194,7 @@ contract NRTManager {
       */
 
       function MonthlyNRTRelease() external returns (bool) {
-        require(token.mou().sub(lastNRTRelease)> 2592000,"NRT release happens once every month");
+        require(now.sub(lastNRTRelease)> 2629744,"NRT release happens once every month");
         uint256 NRTBal = monthlyNRTAmount.add(luckPoolBal);        // Total NRT available.
 
         // Calculating NRT to be released to each of the pools
@@ -242,7 +242,7 @@ contract NRTManager {
         // Reseting NRT
         emit NRTDistributed(NRTBal);
         luckPoolBal = 0;
-        lastNRTRelease = lastNRTRelease.add(30 days); // resetting release date again
+        lastNRTRelease = lastNRTRelease.add(2629744); // @dev adding seconds according to 1 Year = 365.242 days
         burnTokens();                                 // burning burnTokenBal
         emit TokensBurned(burnTokenBal);
 
